@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 )
 
 var profileFolder string = "./"
+var proxyUrl string
 
 func MakeUserProfile(tmpl, username, password string) string {
 	path := profileFolder + tmpl + "/" + username
@@ -22,8 +24,12 @@ func MakeUserProfile(tmpl, username, password string) string {
 
 	cookieFile, err := os.Create(path + "/cookie.txt")
 	defer cookieFile.Close()
-	cmd := exec.Command("casperjs", tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy=127.0.0.1:8080", "--proxy-type=http")
-
+	var cmd *exec.Cmd
+	if len(proxyUrl) > 0 {
+		cmd = exec.Command("casperjs", tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy=127.0.0.1:8080", "--proxy-type=http")
+	} else {
+		cmd = exec.Command("casperjs", tmpl+".js", "--cookies-file="+path+"/cookie.txt")
+	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalln("can not get stdout pipe:", err)
@@ -76,6 +82,9 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	proxyUrl := flag.String("proxy", "", "proxy url: 127.0.0.1:7183 etc.")
+	flag.Parse()
+
 	http.HandleFunc("/submit", HandleSubmit)
 	http.Handle("/result/", http.StripPrefix("/result/", http.FileServer(http.Dir("./"))))
 	err := http.ListenAndServe(":8088", nil)
