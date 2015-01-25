@@ -82,12 +82,14 @@ func HandleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	proxyUrl := flag.String("proxy", "", "proxy url: 127.0.0.1:7183 etc.")
+	proxy := flag.String("proxy", "", "proxy url: 127.0.0.1:7183 etc.")
+	proxyUrl = *proxy
+	port := flag.String("port", "7903", "port")
 	flag.Parse()
 
 	http.HandleFunc("/submit", HandleSubmit)
 	http.Handle("/result/", http.StripPrefix("/result/", http.FileServer(http.Dir("./"))))
-	err := http.ListenAndServe(":8088", nil)
+	err := http.ListenAndServe(":"+*port, nil)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
