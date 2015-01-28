@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crawler/casper-cloud"
 	"flag"
+	"github.com/xlvector/caspercloud"
 	"log"
 	"net"
 	"net/http"
@@ -18,7 +18,7 @@ func main() {
 
 	service := caspercloud.NewCasperServer()
 	http.Handle("/submit", service)
-	l, e := net.Listen("tcp", *port)
+	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
