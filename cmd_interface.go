@@ -1,10 +1,6 @@
 package caspercloud
 
-const (
-	kNotGetResutl = "not get needed result"
-)
-
-type Cmd interface {
+type Command interface {
 	GetMessage() map[string]string
 	SetCmd(cmd string)
 	SetInputArgs(map[string]string)

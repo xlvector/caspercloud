@@ -8,24 +8,22 @@ import (
 	"strings"
 )
 
-const (
-	kProxyServer = "127.0.0.1:7182"
-)
-
 type CasperCmd struct {
 	cmd         string
+	proxyServer string
 	id          string
-	timpl       string
+	tmpl        string
 	message     chan map[string]string
 	input       chan map[string]string
 	initialArgs map[string]string
 }
 
-func NewCasperCmd(id, timpl string) *CasperCmd {
+func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 	return &CasperCmd{
 		cmd:         "",
+		proxyServer: proxyServer,
 		id:          id,
-		timpl:       timpl,
+		tmpl:        tmpl,
 		message:     make(chan map[string]string, 1),
 		input:       make(chan map[string]string, 1),
 		initialArgs: make(map[string]string),
@@ -95,7 +93,7 @@ func (self *CasperCmd) getArgsList(args string) []string {
 }
 
 func (self *CasperCmd) Run() {
-	path := "./" + self.timpl + "/" + self.id
+	path := "./" + self.tmpl + "/" + self.id
 	os.RemoveAll(path)
 	if err := os.MkdirAll(path, 0755); err != nil {
 		log.Fatalln("can not create", path, err)
@@ -103,9 +101,13 @@ func (self *CasperCmd) Run() {
 
 	cookieFile, err := os.Create(path + "/cookie.txt")
 	defer cookieFile.Close()
-
-	//cmd := exec.Command("casperjs", self.timpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+kProxyServer, "--proxy-type=http")
-	cmd := exec.Command("casperjs", self.timpl+".js", "--cookies-file="+path+"/cookie.txt")
+	var cmd *exec.Cmd
+	if len(self.proxyServer) == 0 {
+		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt")
+	} else {
+		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
+	}
+	//cmd := exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalln("can not get stdout pipe:", err)
@@ -138,7 +140,6 @@ func (self *CasperCmd) Run() {
 		}
 
 		if strings.Contains(line, "CMD GET ARGS") {
-			log.Println("strings.Contains(line)")
 			for _, v := range self.getArgsList(line) {
 				bufin.WriteString(self.GetArgsValue(v))
 				bufin.WriteRune('\n')

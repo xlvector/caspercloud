@@ -36,7 +36,7 @@ func NewCasperServer() *CasperServer {
 	}
 }
 
-func (self *CasperServer) executeCmd(cmd Cmd, req *http.Request) string {
+func (self *CasperServer) executeCmd(cmd Command, req *http.Request) string {
 	go cmd.Run()
 	if message := cmd.GetMessage(); message != nil {
 		if data, err := json.Marshal(&message); err == nil {
@@ -46,7 +46,7 @@ func (self *CasperServer) executeCmd(cmd Cmd, req *http.Request) string {
 	return kInternalErrorResut
 }
 
-func (self *CasperServer) setArgs(cmd Cmd, req *http.Request) string {
+func (self *CasperServer) setArgs(cmd Command, req *http.Request) string {
 	args := self.getArgs(req)
 	cmd.SetInputArgs(args)
 
@@ -85,8 +85,9 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	id := params.Get("id")
 	if len(id) == 0 {
 		id = self.getRandId(req)
-		timpl := params.Get("timpl")
-		cmd := NewCasperCmd(id, timpl)
+		tmpl := params.Get("tmpl")
+		proxyServer := params.Get("proxy")
+		cmd := NewCasperCmd(id, tmpl, proxyServer)
 		args := self.getArgs(req)
 		cmd.SetInitialArgs(args)
 		self.data.Set(id, *cmd, 0)
