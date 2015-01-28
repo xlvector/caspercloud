@@ -5,18 +5,20 @@ import (
 )
 
 type FakeCmd struct {
-	cmd     string
-	id      string
-	message chan map[string]string
-	input   chan map[string]string
+	cmd      string
+	id       string
+	message  chan map[string]string
+	input    chan map[string]string
+	isFinish bool
 }
 
 func NewFakeCmd(id string) *FakeCmd {
 	return &FakeCmd{
-		cmd:     "",
-		id:      id,
-		message: make(chan map[string]string, 1),
-		input:   make(chan map[string]string, 1),
+		cmd:      "",
+		id:       id,
+		message:  make(chan map[string]string, 1),
+		input:    make(chan map[string]string, 1),
+		isFinish: false,
 	}
 }
 
@@ -30,6 +32,10 @@ func (fakeCmd *FakeCmd) SetCmd(cmd string) {
 
 func (fakeCmd *FakeCmd) GetMessage() map[string]string {
 	return <-fakeCmd.message
+}
+
+func (fakeCmd *FakeCmd) Finished() bool {
+	return fakeCmd.isFinish
 }
 
 func (fakeCmd *FakeCmd) Run() {
@@ -52,6 +58,6 @@ func (fakeCmd *FakeCmd) Run() {
 	message2["id"] = fakeCmd.id
 	message2["result"] = "get needed value"
 	message2[kJobStatus] = kJobFinished
-
+	fakeCmd.isFinish = true
 	fakeCmd.message <- message2
 }

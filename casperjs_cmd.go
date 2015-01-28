@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type CasperCmd struct {
@@ -15,6 +16,9 @@ type CasperCmd struct {
 	tmpl        string
 	message     chan map[string]string
 	input       chan map[string]string
+	kill        chan int
+	isKill      bool
+	isFinish    bool
 	initialArgs map[string]string
 }
 
@@ -26,6 +30,8 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		tmpl:        tmpl,
 		message:     make(chan map[string]string, 1),
 		input:       make(chan map[string]string, 1),
+		kill:        make(chan int, 1),
+		isKill:      false,
 		initialArgs: make(map[string]string),
 	}
 }
@@ -92,6 +98,10 @@ func (self *CasperCmd) getArgsList(args string) []string {
 	return segs[1:]
 }
 
+func (self *CasperCmd) Finished() bool {
+	return self.isKill || self.isFinish
+}
+
 func (self *CasperCmd) Run() {
 	path := "./" + self.tmpl + "/" + self.id
 	os.RemoveAll(path)
@@ -107,7 +117,12 @@ func (self *CasperCmd) Run() {
 	} else {
 		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
 	}
-	//cmd := exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt")
+	go func() {
+		timer := time.NewTimer(time.Minute * 10)
+		<-timer.C
+		self.isKill = true
+		cmd.Process.Kill()
+	}()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalln("can not get stdout pipe:", err)
@@ -154,5 +169,6 @@ func (self *CasperCmd) Run() {
 	message["id"] = self.id
 	message["result"] = result
 	message[kJobStatus] = kJobFinished
+	self.isFinish = true
 	self.message <- message
 }

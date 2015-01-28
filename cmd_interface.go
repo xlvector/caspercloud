@@ -5,4 +5,5 @@ type Command interface {
 	SetCmd(cmd string)
 	SetInputArgs(map[string]string)
 	Run()
+	Finished() bool
 }

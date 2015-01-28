@@ -4,7 +4,6 @@ import (
 	"crawler/common/counter"
 	"encoding/json"
 	"fmt"
-	"github.com/pmylund/go-cache"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -25,19 +24,20 @@ const (
 )
 
 type CasperServer struct {
-	data *cache.Cache
+	data map[string]Command
 	ct   *counter.Counter
 }
 
 func NewCasperServer() *CasperServer {
 	return &CasperServer{
-		data: cache.New(10*time.Minute, 5*time.Minute),
+		data: make(map[string]Command),
 		ct:   counter.NewCounter(),
 	}
 }
 
 func (self *CasperServer) executeCmd(cmd Command, req *http.Request) string {
 	go cmd.Run()
+
 	if message := cmd.GetMessage(); message != nil {
 		if data, err := json.Marshal(&message); err == nil {
 			return string(data)
@@ -90,17 +90,22 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cmd := NewCasperCmd(id, tmpl, proxyServer)
 		args := self.getArgs(req)
 		cmd.SetInitialArgs(args)
-		self.data.Set(id, *cmd, 0)
+		self.data[id] = cmd
 		fmt.Fprint(w, self.executeCmd(cmd, req))
 		return
 	}
 
 	log.Println("get id", id)
-	cmd, ok := self.data.Get(id)
+	cmd, ok := self.data[id]
 	if ok {
-		if c, ok := cmd.(CasperCmd); ok {
+		if cmd.Finished() {
+			delete(self.data, id)
+			fmt.Fprint(w, "your input is time out")
+			return
+		}
+		if c, ok := cmd.(*CasperCmd); ok {
 			log.Println(" get cmd")
-			fmt.Fprint(w, self.setArgs(&c, req))
+			fmt.Fprint(w, self.setArgs(c, req))
 			return
 		}
 		log.Println("not get cmd")
