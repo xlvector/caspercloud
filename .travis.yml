@@ -1,8 +1,8 @@
 language: go
 
 go:
-    - tip
+    - 1.4.1
 
 install:
-    go get github.com/pmylund/go-cache
-    go build github.com/xlvector/caspercloud/ccloud
+    - go get github.com/pmylund/go-cache
+    - go build github.com/xlvector/caspercloud/ccloud
