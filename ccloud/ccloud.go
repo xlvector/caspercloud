@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/BigTong/casper-cloud"
+	"github.com/BigTong/caspercloud"
 	"log"
 	"net"
 	"net/http"
