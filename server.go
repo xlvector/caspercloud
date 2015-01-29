@@ -1,9 +1,9 @@
 package caspercloud
 
 import (
-	"crawler/common/counter"
 	"encoding/json"
 	"fmt"
+	"github.com/BigTong/gocounter"
 	"github.com/pmylund/go-cache"
 	"log"
 	"net/http"
@@ -26,13 +26,13 @@ const (
 
 type CasperServer struct {
 	data *cache.Cache
-	ct   *counter.Counter
+	ct   *gocounter.Counter
 }
 
 func NewCasperServer() *CasperServer {
 	return &CasperServer{
 		data: cache.New(10*time.Minute, 5*time.Minute),
-		ct:   counter.NewCounter(),
+		ct:   gocounter.NewCounter(),
 	}
 }
 
