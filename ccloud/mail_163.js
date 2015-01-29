@@ -29,7 +29,7 @@ var password = "";
 
 casper.start("http://mail.163.com/", function(){
     this.fill("#login163", {"username": "", "password": ""}, false);
-
+    system.stdout.writeLine("CMD Info List: username and password");
     system.stdout.writeLine("CMD GET ARGS /username/password");
     username = system.stdin.readLine();
     password = system.stdin.readLine();
