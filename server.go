@@ -4,6 +4,7 @@ import (
 	"crawler/common/counter"
 	"encoding/json"
 	"fmt"
+	"github.com/pmylund/go-cache"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -24,13 +25,13 @@ const (
 )
 
 type CasperServer struct {
-	data map[string]Command
+	data *cache.Cache
 	ct   *counter.Counter
 }
 
 func NewCasperServer() *CasperServer {
 	return &CasperServer{
-		data: make(map[string]Command),
+		data: cache.New(10*time.Minute, 10*time.Minute),
 		ct:   counter.NewCounter(),
 	}
 }
@@ -90,20 +91,21 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cmd := NewCasperCmd(id, tmpl, proxyServer)
 		args := self.getArgs(req)
 		cmd.SetInitialArgs(args)
-		self.data[id] = cmd
+		self.data.Set(id, cmd, 10*time.Minute)
 		fmt.Fprint(w, self.executeCmd(cmd, req))
 		return
 	}
 
 	log.Println("get id", id)
-	cmd, ok := self.data[id]
+	cmd, ok := self.data.Get(id)
 	if ok {
-		if cmd.Finished() {
-			delete(self.data, id)
-			fmt.Fprint(w, "your input is time out")
-			return
-		}
+
 		if c, ok := cmd.(*CasperCmd); ok {
+			if c.Finished() {
+				self.data.Delete(id)
+				fmt.Fprint(w, "your input is time out")
+				return
+			}
 			log.Println(" get cmd")
 			fmt.Fprint(w, self.setArgs(c, req))
 			return
