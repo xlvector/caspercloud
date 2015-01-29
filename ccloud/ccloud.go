@@ -13,7 +13,7 @@ import (
 func main() {
 	runtime.GOMAXPROCS(6)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	port := flag.String("port", "9000", "port number")
+	port := flag.String("port", "8000", "port number")
 	flag.Parse()
 
 	service := caspercloud.NewCasperServer()

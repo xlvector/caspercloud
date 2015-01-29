@@ -17,7 +17,11 @@ casper.options.onResourceRequested = function(C, requestData, request) {
 
 casper.options.onResourceReceived = function(C, response) {   
     if (response.url.indexOf('vcode.aspx?f=12') >= 0) {
-        console.log('CMD Info List:' + JSON.stringify(response.headers));
+        response.headers.forEach(function(header) {
+            if (header.name.indexOf('randcode_url') >= 0 ) {
+                console.log('CMD Info List:' + header.value);
+            }
+        });
     }
 };
 
