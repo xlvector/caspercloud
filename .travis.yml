@@ -5,4 +5,5 @@ go:
 
 install:
     - go get github.com/pmylund/go-cache
+    - go get github.com/BigTong/gocounter
     - go install github.com/xlvector/caspercloud/ccloud
