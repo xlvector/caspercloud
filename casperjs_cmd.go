@@ -118,25 +118,25 @@ func (self *CasperCmd) Run() {
 		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
 	}
 	go func() {
-		timer := time.NewTimer(time.Minute * 10)
+		timer := time.NewTimer(time.Minute * KEEP_MINUTES)
 		<-timer.C
 		self.isKill = true
 		cmd.Process.Kill()
 	}()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatalln("can not get stdout pipe:", err)
+		log.Panicln("can not get stdout pipe:", err)
 	}
 	bufout := bufio.NewReader(stdout)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Fatalln("can not get stdin pipe:", err)
+		log.Panicln("can not get stdin pipe:", err)
 	}
 
 	bufin := bufio.NewWriter(stdin)
 	if err := cmd.Start(); err != nil {
-		log.Fatalln("can not start cmd:", err)
+		log.Panicln("can not start cmd:", err)
 	}
 
 	result := ""

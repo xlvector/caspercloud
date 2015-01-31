@@ -24,6 +24,10 @@ const (
 	kJobFinished = "finished"
 )
 
+const (
+	KEEP_MINUTES = 10
+)
+
 type CasperServer struct {
 	data *cache.Cache
 	ct   *gocounter.Counter
@@ -82,6 +86,7 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			debug.PrintStack()
 		}
 	}()
+	self.ct.Incr("request", 1)
 	params := req.URL.Query()
 	id := params.Get("id")
 	if len(id) == 0 {
@@ -91,7 +96,7 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		cmd := NewCasperCmd(id, tmpl, proxyServer)
 		args := self.getArgs(req)
 		cmd.SetInitialArgs(args)
-		self.data.Set(id, cmd, 10*time.Minute)
+		self.data.Set(id, cmd, KEEP_MINUTES*time.Minute)
 		fmt.Fprint(w, self.executeCmd(cmd, req))
 		return
 	}
