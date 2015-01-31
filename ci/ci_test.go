@@ -22,7 +22,7 @@ func init() {
 func runMockSite() {
 	http.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
 		html := "<html><head><title>Hello World</title></head><body><h1>Hello World</h1></body></html>\n"
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		fmt.Fprint(w, html)
 	})
 	l, e := net.Listen("tcp", ":20893")
@@ -32,7 +32,7 @@ func runMockSite() {
 	http.Serve(l, nil)
 }
 
-func runCmd(cmd *exec.Cmd, b *testing.B) {
+func runCmd(cmd *exec.Cmd, b *testing.B, info bool) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Panicln("can not get stdout pipe:", err)
@@ -43,11 +43,13 @@ func runCmd(cmd *exec.Cmd, b *testing.B) {
 		b.Error("fail to run curl")
 	}
 	for {
-		_, err := bufout.ReadString('\n')
+		line, err := bufout.ReadString('\n')
 		if err != nil {
 			break
 		}
-		//log.Println(line)
+		if info {
+			log.Println(line)
+		}
 	}
 	cmd.Wait()
 }
@@ -55,7 +57,7 @@ func runCmd(cmd *exec.Cmd, b *testing.B) {
 func BenchmarkCurl(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cmd := exec.Command("curl", "http://127.0.0.1:20893/hello")
-		runCmd(cmd, b)
+		runCmd(cmd, b, false)
 	}
 }
 
@@ -73,14 +75,14 @@ func BenchmarkHttpClient(b *testing.B) {
 func BenchmarkCasperJs(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cmd := exec.Command("casperjs", "mock.js")
-		runCmd(cmd, b)
+		runCmd(cmd, b, false)
 	}
 }
 
 func BenchmarkCurl100(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cmd := exec.Command("curl", "http://127.0.0.1:20893/hello?[1-100]")
-		runCmd(cmd, b)
+		runCmd(cmd, b, false)
 	}
 }
 
@@ -100,6 +102,13 @@ func BenchmarkHttpClient100(b *testing.B) {
 func BenchmarkCasperJs100(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cmd := exec.Command("casperjs", "mock_100.js")
-		runCmd(cmd, b)
+		runCmd(cmd, b, false)
+	}
+}
+
+func BenchmarkPhantomJs(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd := exec.Command("phantomjs", "loadspeed.js", "http://127.0.0.1:20893/hello", "1")
+		runCmd(cmd, b, true)
 	}
 }
