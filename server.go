@@ -29,26 +29,17 @@ const (
 )
 
 type CasperServer struct {
-	data *cache.Cache
-	ct   *gocounter.Counter
+	clientData *cache.Cache
+	cmdData    *ServerData
+	ct         *gocounter.Counter
 }
 
 func NewCasperServer() *CasperServer {
 	return &CasperServer{
-		data: cache.New(10*time.Minute, 10*time.Minute),
-		ct:   gocounter.NewCounter(),
+		clientData: cache.New(10*time.Minute, 10*time.Minute),
+		cmdData:    NewServerData(),
+		ct:         gocounter.NewCounter(),
 	}
-}
-
-func (self *CasperServer) executeCmd(cmd Command, req *http.Request) string {
-	go cmd.Run()
-
-	if message := cmd.GetMessage(); message != nil {
-		if data, err := json.Marshal(&message); err == nil {
-			return string(data)
-		}
-	}
-	return kInternalErrorResut
 }
 
 func (self *CasperServer) setArgs(cmd Command, req *http.Request) string {
@@ -91,27 +82,29 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	id := params.Get("id")
 	if len(id) == 0 {
 		id = self.getRandId(req)
+		params.Add("_id", id)
+		params.Add("_start", "yes")
 		tmpl := params.Get("tmpl")
 		proxyServer := params.Get("proxy")
-		cmd := NewCasperCmd(id, tmpl, proxyServer)
-		args := self.getArgs(req)
-		cmd.SetInitialArgs(args)
-		self.data.Set(id, cmd, KEEP_MINUTES*time.Minute)
-		fmt.Fprint(w, self.executeCmd(cmd, req))
+		index, c := self.cmdData.GetNewCommand(tmpl, proxyServer)
+		value := tmpl + "#" + index
+		self.clientData.Set(id, value, KEEP_MINUTES*time.Minute)
+		req.URL.RawQuery = params.Encode()
+		fmt.Fprint(w, self.setArgs(c, req))
 		return
 	}
 
 	log.Println("get id", id)
-	cmd, ok := self.data.Get(id)
+	value, ok := self.clientData.Get(id)
 	if ok {
-
-		if c, ok := cmd.(*CasperCmd); ok {
+		if id, ok := value.(string); ok {
+			c := self.cmdData.GetCommand(id)
 			if c.Finished() {
-				self.data.Delete(id)
+				self.clientData.Delete(id)
 				fmt.Fprint(w, "your input is time out")
 				return
 			}
-			log.Println(" get cmd")
+			log.Println("get cmd")
 			fmt.Fprint(w, self.setArgs(c, req))
 			return
 		}
