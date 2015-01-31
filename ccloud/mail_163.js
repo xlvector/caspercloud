@@ -37,7 +37,7 @@ casper.start("http://mail.163.com/", function(){
     this.sendKeys("#pwdInputLine input", password);
     this.capture("./mail_163/" + username + "/login.png");
     this.click("#loginBtn");
-})
+});
 
 casper.waitUntilVisible("#_mail_component_51_51", function(){
     this.capture("./mail_163/" + username + "/email1.png");
