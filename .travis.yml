@@ -3,6 +3,17 @@ language: go
 go:
     - 1.4.1
 
+before_install:
+    - git clone git://github.com/n1k0/casperjs.git ~/casperjs
+    - cd ~/casperjs
+    - git checkout tags/1.0.2
+    - export PATH=$PATH:`pwd`/bin
+    - cd -
+
+before_script:
+    - phantomjs --version
+    - casperjs --version
+
 install:
     - go get github.com/pmylund/go-cache
     - go get github.com/BigTong/gocounter
