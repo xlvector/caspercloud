@@ -35,7 +35,6 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		lock:        &sync.RWMutex{},
 	}
 	go ret.run()
-
 	return ret
 }
 
@@ -59,6 +58,7 @@ func (self *CasperCmd) GetMessage() map[string]string {
 
 func (self *CasperCmd) readInputArgs(key string) string {
 	args := <-self.input
+	log.Println("read args:", args)
 	for k, v := range args {
 		self.args[k] = v
 	}
@@ -76,7 +76,6 @@ func (self *CasperCmd) readInputArgs(key string) string {
 }
 
 func (self *CasperCmd) GetArgsValue(key string) string {
-	//log.Println("start to get args:", key)
 	if val, ok := self.args[key]; ok {
 		//log.Println("successfully get args value", val)
 		return val
@@ -154,6 +153,7 @@ func (self *CasperCmd) run() {
 		if err != nil {
 			break
 		}
+		log.Println(line)
 
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
 			//log.Println("server WAITING FOR SERVICE")
@@ -202,14 +202,7 @@ func (self *CasperCmd) run() {
 			self.lock.Unlock()
 		}
 	}
-	/*
-		message := make(map[string]string)
-		message["id"] = self.id
-		//message["result"] = result
-		message[kJobStatus] = kJobFinished
-	*/
 	self.lock.Lock()
 	self.isFinish = true
 	self.lock.Unlock()
-	//self.message <- message
 }

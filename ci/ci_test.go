@@ -2,7 +2,9 @@ package ci
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"github.com/xlvector/caspercloud"
 	"io/ioutil"
 	"log"
 	"net"
@@ -25,11 +27,30 @@ func runMockSite() {
 		time.Sleep(100 * time.Millisecond)
 		fmt.Fprint(w, html)
 	})
+	service := caspercloud.NewCasperServer()
+	http.Handle("/submit", service)
 	l, e := net.Listen("tcp", ":20893")
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
 	http.Serve(l, nil)
+}
+
+func getJson(link string) map[string]string {
+	resp, err := client.Get(link)
+	if err != nil {
+		log.Println("fail to get resp")
+		return nil
+	}
+	defer resp.Body.Close()
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("fail to read output")
+		return nil
+	}
+	ret := make(map[string]string)
+	json.Unmarshal(out, &ret)
+	return ret
 }
 
 func runCmd(cmd *exec.Cmd, b *testing.B, info bool) {
@@ -111,4 +132,22 @@ func BenchmarkPhantomJs(b *testing.B) {
 		cmd := exec.Command("phantomjs", "loadspeed.js", "http://127.0.0.1:20893/hello", "1")
 		runCmd(cmd, b, true)
 	}
+}
+
+func TestBaidu(t *testing.T) {
+	ret := getJson("http://127.0.0.1:20893/submit?tmpl=baidu")
+	id, ok := ret["id"]
+	if !ok {
+		t.Error("can not find id")
+	}
+	ret = getJson("http://127.0.0.1:20893/submit?tmpl=baidu&id=" + id + "&_query=google")
+	log.Println(ret)
+	ret = getJson("http://127.0.0.1:20893/submit?tmpl=baidu&id=" + id + "&_query=sina")
+	log.Println(ret)
+	ret = getJson("http://127.0.0.1:20893/submit?tmpl=baidu&id=" + id + "&_query=golang")
+	log.Println(ret)
+	ret = getJson("http://127.0.0.1:20893/submit?tmpl=baidu&id=" + id + "&_query=weibo")
+	log.Println(ret)
+	ret = getJson("http://127.0.0.1:20893/submit?tmpl=baidu&id=" + id + "&_query=xlvector")
+	log.Println(ret)
 }
