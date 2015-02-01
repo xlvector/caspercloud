@@ -126,7 +126,7 @@ func (self *CasperCmd) run() {
 		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
 	}
 	go func() {
-		timer := time.NewTimer(time.Minute * KEEP_MINUTES)
+		timer := time.NewTimer(time.Minute * kKeepMinutes)
 		<-timer.C
 		self.lock.Lock()
 		self.isKill = true
