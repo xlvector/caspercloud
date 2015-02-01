@@ -15,17 +15,6 @@ import (
 
 const (
 	kInternalErrorResut = "server get internal result"
-	kWorkTypeNoInteract = "no_interact"
-	kWorkTypeInputArgs  = "input_args"
-)
-const (
-	kJobStatus   = "job_status"
-	kJobOndoing  = "ondoing"
-	kJobFinished = "finished"
-)
-
-const (
-	KEEP_MINUTES = 10
 )
 
 type CasperServer struct {
@@ -81,14 +70,20 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	params := req.URL.Query()
 	id := params.Get("id")
 	if len(id) == 0 {
-		id = self.getRandId(req)
-		params.Add("_id", id)
-		params.Add("_start", "yes")
 		tmpl := params.Get("tmpl")
 		proxyServer := params.Get("proxy")
 		index, c := self.cmdData.GetNewCommand(tmpl, proxyServer)
+		if c == nil {
+			fmt.Fprint(w, "server is to busy")
+			return
+		}
+
 		value := tmpl + "#" + index
-		self.clientData.Set(id, value, KEEP_MINUTES*time.Minute)
+		id = self.getRandId(req)
+		self.clientData.Set(id, value, kKeepMinutes*time.Minute)
+
+		params.Add("_id", id)
+		params.Add("_start", "yes")
 		req.URL.RawQuery = params.Encode()
 		fmt.Fprint(w, self.setArgs(c, req))
 		return
