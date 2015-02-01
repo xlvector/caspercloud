@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os/exec"
 	"testing"
+	"time"
 )
 
 var client *http.Client
@@ -131,12 +132,17 @@ func BenchmarkPhantomJs(b *testing.B) {
 	}
 }
 
-func TestBaidu(t *testing.T) {
-	queries := []string{"sina", "twitter", "xlvector", "bigtong"}
-	for _, q := range queries {
-		ret := getJson(ENDPOINT + "/submit?tmpl=hello&_query=" + q)
-		if v, _ := ret["result"]; v != q {
-			t.Error(v)
-		}
+func TestHello(t *testing.T) {
+	for i := 0; i < 5; i++ {
+		go func() {
+			queries := []string{"sina", "twitter", "xlvector", "bigtong"}
+			for _, q := range queries {
+				time.Sleep(time.Millisecond * 50)
+				ret := getJson(ENDPOINT + "/submit?tmpl=hello&_query=" + q)
+				if v, _ := ret["result"]; v != q {
+					t.Error(v)
+				}
+			}
+		}()
 	}
 }

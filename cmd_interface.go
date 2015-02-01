@@ -5,4 +5,5 @@ type Command interface {
 	GetStatus() int
 	SetInputArgs(map[string]string)
 	Finished() bool
+	GetId() string
 }
