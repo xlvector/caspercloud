@@ -145,4 +145,26 @@ func TestHello(t *testing.T) {
 			}
 		}()
 	}
+	time.Sleep(time.Second * 5)
+}
+
+func TestForm(t *testing.T) {
+	for i := 0; i < 5; i++ {
+		go func() {
+			ret := getJson(ENDPOINT + "/submit?tmpl=form")
+			id, ok := ret["id"]
+			if !ok {
+				t.Error("can not find id in result")
+				return
+			}
+			ret = getJson(ENDPOINT + "/submit?tmpl=form&_phone=18612345678&id=" + id)
+			log.Println(ret)
+			ret = getJson(ENDPOINT + "/submit?tmpl=form&_verify_code=123456&id=" + id)
+			log.Println(ret)
+			if ret["result"] != "Thanks" {
+				t.Error("result not right")
+			}
+		}()
+	}
+	time.Sleep(time.Second * 5)
 }
