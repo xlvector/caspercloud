@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/xlvector/caspercloud"
+	_ "github.com/xlvector/caspercloud/ci"
 	"log"
 	"net"
 	"net/http"

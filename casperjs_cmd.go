@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -20,7 +19,6 @@ type CasperCmd struct {
 	isFinish    bool
 	args        map[string]string
 	status      int
-	lock        *sync.RWMutex
 }
 
 func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
@@ -32,23 +30,21 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		input:       make(chan map[string]string, 1),
 		args:        make(map[string]string),
 		status:      kCommandStatusIdle,
-		lock:        &sync.RWMutex{},
 	}
 	go ret.run()
 	return ret
 }
 
 func (self *CasperCmd) GetStatus() int {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
 	return self.status
 }
 
 func (self *CasperCmd) SetInputArgs(input map[string]string) {
 	if self.Finished() {
+		log.Println("start another casperjs")
 		go self.run()
 	}
-
+	log.Println("insert input:", input)
 	self.input <- input
 }
 
@@ -77,13 +73,13 @@ func (self *CasperCmd) readInputArgs(key string) string {
 
 func (self *CasperCmd) GetArgsValue(key string) string {
 	if val, ok := self.args[key]; ok {
-		//log.Println("successfully get args value", val)
+		log.Println("successfully get args value", val)
 		return val
 	}
 	for {
 		val := self.readInputArgs(key)
 		if len(val) != 0 {
-			//log.Println("successfully get args value", val)
+			log.Println("successfully get args value", val)
 			return val
 		}
 	}
@@ -99,16 +95,12 @@ func (self *CasperCmd) getArgsList(args string) []string {
 }
 
 func (self *CasperCmd) Finished() bool {
-	self.lock.Lock()
-	defer self.lock.Unlock()
 	return self.isKill || self.isFinish
 }
 
 func (self *CasperCmd) run() {
-	self.lock.Lock()
 	self.isFinish = false
 	self.isKill = false
-	self.lock.Unlock()
 
 	path := "./" + self.tmpl + "/" + self.id
 	os.RemoveAll(path)
@@ -127,9 +119,7 @@ func (self *CasperCmd) run() {
 	go func() {
 		timer := time.NewTimer(time.Minute * kKeepMinutes)
 		<-timer.C
-		self.lock.Lock()
 		self.isKill = true
-		self.lock.Unlock()
 		cmd.Process.Kill()
 	}()
 	stdout, err := cmd.StdoutPipe()
@@ -148,34 +138,23 @@ func (self *CasperCmd) run() {
 		log.Panicln("can not start cmd:", err)
 	}
 
+	log.Println("begin read line from capser")
 	for {
 		line, err := bufout.ReadString('\n')
 		if err != nil {
+			log.Println(err)
 			break
 		}
 		log.Println(line)
 
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
-			//log.Println("server WAITING FOR SERVICE")
 			if self.GetArgsValue("start") == "yes" {
-				//log.Println("start to process job")
 				delete(self.args, "start")
-				self.lock.Lock()
 				self.status = kCommandStatusBusy
-				self.lock.Unlock()
 				bufin.WriteString("start")
 				bufin.WriteRune('\n')
 				bufin.Flush()
 			}
-			continue
-		}
-
-		if strings.HasPrefix(line, "CMD Info List") {
-			message := make(map[string]string)
-			message["id"] = self.GetArgsValue("id")
-			message["info"] = strings.TrimPrefix(line, "CMD Info List")
-			message[kJobStatus] = kJobOndoing
-			self.message <- message
 			continue
 		}
 
@@ -191,18 +170,16 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO CONTENT") {
-			//log.Println("get content")
 			message := make(map[string]string)
 			message["id"] = self.GetArgsValue("id")
-			message["result"] = strings.TrimPrefix(line, "CMD INFO CONTENT")
+			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
+			result = strings.Trim(result, " \n")
+			message["result"] = result
 			message[kJobStatus] = kJobFinished
+			log.Println("send result:", message)
 			self.message <- message
-			self.lock.Lock()
 			self.status = kCommandStatusIdle
-			self.lock.Unlock()
 		}
 	}
-	self.lock.Lock()
 	self.isFinish = true
-	self.lock.Unlock()
 }

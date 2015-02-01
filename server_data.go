@@ -1,6 +1,7 @@
 package caspercloud
 
 import (
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -9,7 +10,7 @@ import (
 )
 
 const (
-	kMaxServerNum = 100
+	kMaxServerNum = 1
 )
 
 type ServerData struct {
@@ -46,6 +47,7 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) (id string, c Co
 			cmds = append(cmds, c)
 		}
 		self.data[tmpl] = cmds
+		log.Println("add cmd for template:", tmpl)
 		self.lock.Unlock()
 		val, _ = self.data[tmpl]
 	}
