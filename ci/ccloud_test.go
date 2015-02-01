@@ -2,7 +2,7 @@ package ci
 
 import (
 	"flag"
-	"github.com/BigTong/caspercloud"
+	"github.com/xlvector/caspercloud"
 	"io/ioutil"
 	"log"
 	"net"
