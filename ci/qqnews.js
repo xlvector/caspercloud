@@ -14,7 +14,7 @@ var interact = "";
 
 casper.start("http://roll.news.qq.com/", function() {})
 .repeat(3, function(){
-    console.log('CMD INFO WAITFOR SERVICE')
+    console.log('CMD INFO WAITING FOR SERVICE')
     interact = system.stdin.readLine();
     console.log('CMD INFO STARTED')
     casper.waitUntilVisible('.RefreshBtn', function() {

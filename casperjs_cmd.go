@@ -76,15 +76,15 @@ func (self *CasperCmd) readInputArgs(key string) string {
 }
 
 func (self *CasperCmd) GetArgsValue(key string) string {
-	log.Println("start to get args:", key)
+	//log.Println("start to get args:", key)
 	if val, ok := self.args[key]; ok {
-		log.Println("successfully get args value", val)
+		//log.Println("successfully get args value", val)
 		return val
 	}
 	for {
 		val := self.readInputArgs(key)
 		if len(val) != 0 {
-			log.Println("successfully get args value", val)
+			//log.Println("successfully get args value", val)
 			return val
 		}
 	}
@@ -156,7 +156,9 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
+			//log.Println("server WAITING FOR SERVICE")
 			if self.GetArgsValue("start") == "yes" {
+				//log.Println("start to process job")
 				delete(self.args, "start")
 				self.lock.Lock()
 				self.status = kCommandStatusBusy
@@ -165,6 +167,7 @@ func (self *CasperCmd) run() {
 				bufin.WriteRune('\n')
 				bufin.Flush()
 			}
+			continue
 		}
 
 		if strings.HasPrefix(line, "CMD Info List") {
@@ -173,6 +176,7 @@ func (self *CasperCmd) run() {
 			message["info"] = strings.TrimPrefix(line, "CMD Info List")
 			message[kJobStatus] = kJobOndoing
 			self.message <- message
+			continue
 		}
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
@@ -187,6 +191,7 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO CONTENT") {
+			//log.Println("get content")
 			message := make(map[string]string)
 			message["id"] = self.GetArgsValue("id")
 			message["result"] = strings.TrimPrefix(line, "CMD INFO CONTENT")
