@@ -33,6 +33,7 @@ func NewCasperServer() *CasperServer {
 
 func (self *CasperServer) setArgs(cmd Command, req *http.Request) string {
 	args := self.getArgs(req)
+	log.Println("setArgs:", args)
 	cmd.SetInputArgs(args)
 
 	if message := cmd.GetMessage(); message != nil {
