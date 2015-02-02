@@ -73,15 +73,14 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
 		proxyServer := params.Get("proxy")
-		index, c := self.cmdData.GetNewCommand(tmpl, proxyServer)
+		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
 		if c == nil {
 			fmt.Fprint(w, "server is to busy")
 			return
 		}
 
-		value := tmpl + "#" + index
 		id = self.getRandId(req)
-		self.clientData.Set(id, value, kKeepMinutes*time.Minute)
+		self.clientData.Set(id, c.GetId(), kKeepMinutes*time.Minute)
 
 		params.Add("_id", id)
 		params.Add("_start", "yes")

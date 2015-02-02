@@ -22,6 +22,10 @@ func NewFakeCmd(id string) *FakeCmd {
 	}
 }
 
+func (fakeCmd *FakeCmd) GetId() string {
+	return fakeCmd.id
+}
+
 func (fakeCmd *FakeCmd) SetInputArgs(input map[string]string) {
 	fakeCmd.input <- input
 }

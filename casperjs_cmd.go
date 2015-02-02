@@ -35,6 +35,10 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 	return ret
 }
 
+func (self *CasperCmd) GetId() string {
+	return self.id
+}
+
 func (self *CasperCmd) GetStatus() int {
 	return self.status
 }
