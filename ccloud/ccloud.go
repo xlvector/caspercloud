@@ -11,6 +11,10 @@ import (
 	"runtime"
 )
 
+const (
+	kDefaultDownloadDirectory = "./images"
+)
+
 func main() {
 	runtime.GOMAXPROCS(6)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -19,6 +23,8 @@ func main() {
 
 	service := caspercloud.NewCasperServer()
 	http.Handle("/submit", service)
+	http.Handle("/", http.FileServer(http.Dir(kDefaultDownloadDirectory)))
+
 	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
 		log.Fatal("listen error:", e)
