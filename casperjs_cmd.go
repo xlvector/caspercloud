@@ -120,12 +120,14 @@ func (self *CasperCmd) run() {
 	} else {
 		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
 	}
-	go func() {
-		timer := time.NewTimer(time.Minute * kKeepMinutes)
-		<-timer.C
-		self.isKill = true
-		cmd.Process.Kill()
-	}()
+	/*
+		go func() {
+			timer := time.NewTimer(time.Minute * kKeepMinutes)
+			<-timer.C
+			self.isKill = true
+			cmd.Process.Kill()
+		}()
+	*/
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Panicln("can not get stdout pipe:", err)

@@ -94,6 +94,11 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if ok {
 		if id, ok := value.(string); ok {
 			c := self.cmdData.GetCommand(id)
+			if c == nil {
+				fmt.Fprint(w, "your input is time out")
+				return
+			}
+
 			if c.Finished() {
 				self.clientData.Delete(id)
 				fmt.Fprint(w, "your input is time out")
