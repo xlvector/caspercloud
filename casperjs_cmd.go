@@ -199,5 +199,13 @@ func (self *CasperCmd) run() {
 			self.status = kCommandStatusIdle
 		}
 	}
+	message := make(map[string]string)
+	message["id"] = self.GetArgsValue("id")
+	message["result"] = kCasperGetTimeout
+	message[kJobStatus] = kJobFinished
+	//log.Println("send result:", message)
+	self.message <- message
+	self.status = kCommandStatusIdle
 	self.isFinish = true
+	os.RemoveAll(path)
 }
