@@ -120,12 +120,14 @@ func (self *CasperCmd) run() {
 	} else {
 		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
 	}
-	go func() {
-		timer := time.NewTimer(time.Minute * kKeepMinutes)
-		<-timer.C
-		self.isKill = true
-		cmd.Process.Kill()
-	}()
+	/*
+		go func() {
+			timer := time.NewTimer(time.Minute * kKeepMinutes)
+			<-timer.C
+			self.isKill = true
+			cmd.Process.Kill()
+		}()
+	*/
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Panicln("can not get stdout pipe:", err)
@@ -155,7 +157,7 @@ func (self *CasperCmd) run() {
 			if self.GetArgsValue("start") == "yes" {
 				delete(self.args, "start")
 				self.status = kCommandStatusBusy
-				bufin.WriteString("start")
+				bufin.WriteString(self.tmpl + "/" + self.id + "/")
 				bufin.WriteRune('\n')
 				bufin.Flush()
 			}
@@ -170,6 +172,18 @@ func (self *CasperCmd) run() {
 				bufin.WriteRune('\n')
 				bufin.Flush()
 			}
+			continue
+		}
+
+		if strings.HasPrefix(line, "CMD INFO RANDCODE") {
+			message := make(map[string]string)
+			message["id"] = self.GetArgsValue("id")
+			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
+			result = strings.Trim(result, " \n")
+			message["result"] = result
+			message[kJobStatus] = kJobOndoing
+			log.Println("send result:", message)
+			self.message <- message
 			continue
 		}
 

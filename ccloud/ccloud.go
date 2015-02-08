@@ -2,13 +2,17 @@ package main
 
 import (
 	"flag"
-	"github.com/xlvector/caspercloud"
-	_ "github.com/xlvector/caspercloud/ci"
+	"github.com/BigTong/caspercloud"
+	_ "github.com/BigTong/caspercloud/ci"
 	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
+)
+
+const (
+	kDefaultDownloadDirectory = "./images"
 )
 
 func main() {
@@ -19,6 +23,8 @@ func main() {
 
 	service := caspercloud.NewCasperServer()
 	http.Handle("/submit", service)
+	http.Handle("/", http.FileServer(http.Dir(kDefaultDownloadDirectory)))
+
 	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
 		log.Fatal("listen error:", e)

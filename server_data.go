@@ -48,7 +48,7 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
 	if !ok {
 		self.lock.Lock()
 		var cmds []Command
-		c := NewCasperCmd(tmpl+"#"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
+		c := NewCasperCmd(tmpl+"_"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
 		cmds = append(cmds, c)
 		self.data[tmpl] = cmds
 		self.index[c.GetId()] = c
@@ -57,13 +57,13 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
 		return c
 	}
 
-	c := NewCasperCmd(tmpl+"#"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
+	c := NewCasperCmd(tmpl+"_"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
 	val = append(val, c)
 	return c
 }
 
 func (self *ServerData) parseId(id string) (tmpl string, index int) {
-	segs := strings.Split(id, "#")
+	segs := strings.Split(id, "_")
 	if len(segs) < 1 {
 		return "", -1
 	}
