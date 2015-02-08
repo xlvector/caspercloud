@@ -15,3 +15,7 @@ const (
 	kCommandStatusBusy = 0
 	kCommandStatusIdle = 1
 )
+
+const (
+	kCasperGetTimeout = "casper time out"
+)
