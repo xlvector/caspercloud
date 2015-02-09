@@ -59,6 +59,7 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
 
 	c := NewCasperCmd(tmpl+"_"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
 	val = append(val, c)
+	self.index[c.GetId()] = c
 	return c
 }
 
