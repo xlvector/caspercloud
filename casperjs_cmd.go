@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	//"time"
 )
 
 type CasperCmd struct {
