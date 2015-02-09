@@ -1,3 +1,8 @@
+.gitignore~
+ccloud/ccloud
+ccloud/*.js
+ccloud/*.log
+.DS_Store
 form
 hello
 mail_163
