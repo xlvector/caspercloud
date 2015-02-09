@@ -19,7 +19,6 @@ func main() {
 
 	service := caspercloud.NewCasperServer()
 	http.Handle("/submit", service)
-	http.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 	http.Handle("/site/", http.StripPrefix("/site/", http.FileServer(http.Dir("./site"))))
 	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
