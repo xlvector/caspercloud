@@ -115,18 +115,10 @@ func (self *CasperCmd) run() {
 	defer cookieFile.Close()
 	var cmd *exec.Cmd
 	if len(self.proxyServer) == 0 {
-		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt")
+		cmd = exec.Command("casperjs", self.tmpl+".js", "--web-security=no", "--cookies-file="+path+"/cookie.txt", "--context="+path)
 	} else {
-		cmd = exec.Command("casperjs", self.tmpl+".js", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http")
+		cmd = exec.Command("casperjs", self.tmpl+".js", "--web-security=no", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http", "--context="+path)
 	}
-	/*
-		go func() {
-			timer := time.NewTimer(time.Minute * kKeepMinutes)
-			<-timer.C
-			self.isKill = true
-			cmd.Process.Kill()
-		}()
-	*/
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Panicln("can not get stdout pipe:", err)
