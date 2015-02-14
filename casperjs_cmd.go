@@ -140,11 +140,6 @@ func (self *CasperCmd) run() {
 		line, err := bufout.ReadString('\n')
 		if err != nil {
 			log.Println(err)
-			break
-		}
-		log.Println(line)
-
-		if strings.HasPrefix(line, "Wait timeout") && strings.Contains(line, "expired") {
 			message := make(map[string]string)
 			message["id"] = self.GetArgsValue("id")
 			message[kJobStatus] = kJobFailed
@@ -152,8 +147,9 @@ func (self *CasperCmd) run() {
 			log.Println("send result:", message)
 			self.message <- message
 			cmd.Process.Kill()
-			return
+			break
 		}
+		log.Println(line)
 
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
 			if self.GetArgsValue("start") == "yes" {
