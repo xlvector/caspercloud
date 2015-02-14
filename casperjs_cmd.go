@@ -137,6 +137,7 @@ func (self *CasperCmd) run() {
 	}
 
 	log.Println("begin read line from capser")
+	start := false
 	for {
 		line, err := bufout.ReadString('\n')
 		if err != nil {
@@ -146,6 +147,11 @@ func (self *CasperCmd) run() {
 			break
 		}
 		log.Println(line)
+
+		if strings.HasPrefix(line, "CMD INFO STARTED") {
+			start = true
+			continue
+		}
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
 			for _, v := range self.getArgsList(line) {
@@ -185,6 +191,8 @@ func (self *CasperCmd) run() {
 			log.Println("send result:", message)
 			self.message <- message
 			self.status = kCommandStatusIdle
+			start = false
+			continue
 		}
 
 		if strings.HasPrefix(line, "CMD EXIT") {
@@ -192,10 +200,13 @@ func (self *CasperCmd) run() {
 			message["id"] = self.GetArgsValue("id")
 			message[kJobStatus] = kJobFailed
 			log.Println("send result:", message)
-			self.message <- message
+			if start {
+				self.message <- message
+			}
 			self.status = kCommandStatusIdle
 			cmd.Process.Wait()
 			cmd.Process.Kill()
+			break
 		}
 	}
 	self.isFinish = true
