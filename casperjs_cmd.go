@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type CasperCmd struct {
@@ -184,6 +185,7 @@ func (self *CasperCmd) run() {
 			message[kJobStatus] = kJobFinished
 			log.Println("send result:", message)
 			self.message <- message
+			time.Sleep(time.Minute)
 			self.status = kCommandStatusIdle
 		}
 
