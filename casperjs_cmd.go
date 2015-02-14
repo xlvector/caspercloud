@@ -141,12 +141,7 @@ func (self *CasperCmd) run() {
 		line, err := bufout.ReadString('\n')
 		if err != nil {
 			log.Println(err)
-			message := make(map[string]interface{})
-			message["id"] = self.GetArgsValue("id")
-			message[kJobStatus] = kJobFailed
-			message["result"] = "job failed, please retry"
-			log.Println("send result:", message)
-			self.message <- message
+			cmd.Process.Wait()
 			cmd.Process.Kill()
 			break
 		}
@@ -190,6 +185,17 @@ func (self *CasperCmd) run() {
 			log.Println("send result:", message)
 			self.message <- message
 			self.status = kCommandStatusIdle
+		}
+
+		if strings.HasPrefix(line, "CMD EXIT") {
+			message := make(map[string]interface{})
+			message["id"] = self.GetArgsValue("id")
+			message[kJobStatus] = kJobFailed
+			log.Println("send result:", message)
+			self.message <- message
+			self.status = kCommandStatusIdle
+			cmd.Process.Wait()
+			cmd.Process.Kill()
 		}
 	}
 	self.isFinish = true
