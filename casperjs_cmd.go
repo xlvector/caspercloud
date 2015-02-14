@@ -2,6 +2,7 @@ package caspercloud
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"os"
 	"os/exec"
@@ -152,13 +153,9 @@ func (self *CasperCmd) run() {
 		log.Println(line)
 
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
-			if self.GetArgsValue("start") == "yes" {
-				delete(self.args, "start")
-				self.status = kCommandStatusBusy
-				bufin.WriteString(self.tmpl + "/" + self.id + "/")
-				bufin.WriteRune('\n')
-				bufin.Flush()
-			}
+			bufin.WriteString(self.tmpl + "/" + self.id + "/")
+			bufin.WriteRune('\n')
+			bufin.Flush()
 			continue
 		}
 
@@ -191,6 +188,11 @@ func (self *CasperCmd) run() {
 			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
 			result = strings.Trim(result, " \n")
 			message["result"] = result
+			var out map[string]interface{}
+			err := json.Unmarshal([]byte(result), &out)
+			if err == nil {
+				message["json"] = out
+			}
 			message[kJobStatus] = kJobFinished
 			log.Println("send result:", message)
 			self.message <- message
