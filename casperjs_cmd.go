@@ -176,7 +176,7 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO CONTENT") {
-			message := make(map[string]string)
+			message := make(map[string]interface{})
 			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
 			result = strings.Trim(result, " \n")
