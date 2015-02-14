@@ -152,13 +152,6 @@ func (self *CasperCmd) run() {
 		}
 		log.Println(line)
 
-		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
-			bufin.WriteString(self.tmpl + "/" + self.id + "/")
-			bufin.WriteRune('\n')
-			bufin.Flush()
-			continue
-		}
-
 		if strings.HasPrefix(line, "CMD GET ARGS") {
 			for _, v := range self.getArgsList(line) {
 				key := strings.TrimRight(v, "\n")
