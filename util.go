@@ -4,6 +4,7 @@ const (
 	kJobStatus   = "job_status"
 	kJobOndoing  = "ondoing"
 	kJobFinished = "finished"
+	kJobFailed   = "failed"
 )
 
 const (

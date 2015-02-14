@@ -144,6 +144,17 @@ func (self *CasperCmd) run() {
 		}
 		log.Println(line)
 
+		if strings.HasPrefix(line, "Wait timeout") && strings.Contains(line, "expired") {
+			message := make(map[string]string)
+			message["id"] = self.GetArgsValue("id")
+			message[kJobStatus] = kJobFailed
+			message["result"] = "job failed, please retry"
+			log.Println("send result:", message)
+			self.message <- message
+			cmd.Process.Kill()
+			return
+		}
+
 		if strings.HasPrefix(line, "CMD INFO WAITING FOR SERVICE") {
 			if self.GetArgsValue("start") == "yes" {
 				delete(self.args, "start")
