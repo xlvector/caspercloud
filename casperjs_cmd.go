@@ -13,7 +13,7 @@ type CasperCmd struct {
 	proxyServer string
 	id          string
 	tmpl        string
-	message     chan map[string]string
+	message     chan map[string]interface{}
 	input       chan map[string]string
 	isKill      bool
 	isFinish    bool
@@ -52,7 +52,7 @@ func (self *CasperCmd) SetInputArgs(input map[string]string) {
 	self.input <- input
 }
 
-func (self *CasperCmd) GetMessage() map[string]string {
+func (self *CasperCmd) GetMessage() map[string]interface{} {
 	return <-self.message
 }
 

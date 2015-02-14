@@ -1,7 +1,7 @@
 package caspercloud
 
 type Command interface {
-	GetMessage() map[string]string
+	GetMessage() map[string]interface{}
 	GetStatus() int
 	SetInputArgs(map[string]string)
 	Finished() bool
