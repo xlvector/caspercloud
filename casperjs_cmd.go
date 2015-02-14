@@ -26,7 +26,7 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		proxyServer: proxyServer,
 		id:          id,
 		tmpl:        tmpl,
-		message:     make(chan map[string]string, 1),
+		message:     make(chan map[string]interface{}, 1),
 		input:       make(chan map[string]string, 1),
 		args:        make(map[string]string),
 		status:      kCommandStatusIdle,
@@ -66,7 +66,7 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		return val
 	}
 
-	message := make(map[string]string)
+	message := make(map[string]interface{})
 	message["id"] = self.GetArgsValue("id")
 	message["need_args"] = key
 	message[kJobStatus] = kJobOndoing
@@ -141,7 +141,7 @@ func (self *CasperCmd) run() {
 		line, err := bufout.ReadString('\n')
 		if err != nil {
 			log.Println(err)
-			message := make(map[string]string)
+			message := make(map[string]interface{})
 			message["id"] = self.GetArgsValue("id")
 			message[kJobStatus] = kJobFailed
 			message["result"] = "job failed, please retry"
@@ -164,7 +164,7 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO RANDCODE") {
-			message := make(map[string]string)
+			message := make(map[string]interface{})
 			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
 			result = strings.Trim(result, " \n")
