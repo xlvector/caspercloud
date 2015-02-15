@@ -182,13 +182,14 @@ func (self *CasperCmd) run() {
 			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
 			result = strings.Trim(result, " \n")
 			message["result"] = result
-			var out map[string]interface{}
+			var out CasperOutput
 			err := json.Unmarshal([]byte(result), &out)
 			if err == nil {
 				message["json"] = out
 			}
 			message[kJobStatus] = kJobFinished
 			log.Println("send result:", message)
+			LoadDownloads(out.Downloads)
 			self.message <- message
 			self.status = kCommandStatusIdle
 			start = false
