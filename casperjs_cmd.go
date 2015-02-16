@@ -136,6 +136,12 @@ func (self *CasperCmd) run() {
 		log.Panicln("can not start cmd:", err)
 	}
 
+	go func() {
+		timer := time.NewTimer(5 * time.Minute)
+		<-timer.C
+		cmd.Process.Kill()
+	}()
+
 	log.Println("begin read line from capser")
 	start := false
 	for {
