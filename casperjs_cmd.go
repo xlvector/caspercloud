@@ -148,6 +148,7 @@ func (self *CasperCmd) run() {
 	start := false
 	for {
 		line, err := bufout.ReadString('\n')
+		line = strings.Trim(line, "\n")
 		if err != nil {
 			log.Println(err)
 			cmd.Process.Wait()

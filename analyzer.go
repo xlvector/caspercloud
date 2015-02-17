@@ -35,6 +35,6 @@ func ParseFile(fn string) error {
 		log.Println("fail to get dom:", err)
 		return err
 	}
-	log.Println(doc.Text())
+	log.Println("file length", len(doc.Text()))
 	return nil
 }
