@@ -40,10 +40,12 @@ func (self *ServerData) searchIdleCommand(cmds []Command) Command {
 }
 
 func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
+	log.Println(tmpl, self.data)
 	self.lock.RLock()
 	val, ok := self.data[tmpl]
 	self.lock.RUnlock()
 	if ok {
+		log.Printf("find %d commands", len(val))
 		c := self.searchIdleCommand(val)
 		if c != nil {
 			return c
