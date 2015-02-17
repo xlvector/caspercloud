@@ -141,6 +141,7 @@ func (self *CasperCmd) run() {
 		timer := time.NewTimer(5 * time.Minute)
 		<-timer.C
 		cmd.Process.Kill()
+		self.isKill = true
 	}()
 
 	log.Println("begin read line from capser")

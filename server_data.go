@@ -26,10 +26,13 @@ func NewServerData() *ServerData {
 }
 
 func (self *ServerData) searchIdleCommand(cmds []Command) Command {
-	for i := 0; i < len(cmds) && i < 3; i++ {
-		k := self.random.Intn(len(cmds))
-		if cmds[k].GetStatus() == kCommandStatusIdle {
-			return cmds[k]
+	for i := len(cmds) - 1; i > 0 && i > len(cmds)-5; i-- {
+		if cmds[i].Finished() {
+			continue
+		}
+		if cmds[i].GetStatus() == kCommandStatusIdle {
+			log.Println("use idle command:", cmds[i].GetId())
+			return cmds[i]
 		}
 	}
 	return nil
