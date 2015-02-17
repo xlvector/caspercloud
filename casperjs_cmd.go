@@ -31,6 +31,8 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		input:       make(chan map[string]string, 1),
 		args:        make(map[string]string),
 		status:      kCommandStatusIdle,
+		isKill:      false,
+		isFinish:    false,
 	}
 	go ret.run()
 	return ret

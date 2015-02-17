@@ -27,6 +27,7 @@ func NewServerData() *ServerData {
 
 func (self *ServerData) searchIdleCommand(cmds []Command) Command {
 	for i := len(cmds) - 1; i > 0 && i > len(cmds)-5; i-- {
+		log.Println(cmds[i].GetId(), cmds[i].Finished())
 		if cmds[i].Finished() {
 			continue
 		}
