@@ -5,6 +5,7 @@ casper.start("http://127.0.0.1:8000/form/init", function() {
     system.stdout.writeLine("CMD INFO CONTENT phone");
     system.stdout.writeLine("CMD GET ARGS /phone");
     var phone = system.stdin.readLine();
+    system.stdout.writeLine("phone: " + phone);
     this.sendKeys("#phone", phone);
     this.click("#submit");
 })

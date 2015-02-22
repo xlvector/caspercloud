@@ -48,10 +48,10 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
 		log.Printf("find %d commands", len(val))
 		c := self.searchIdleCommand(val)
 		if c != nil {
+			log.Println("return exist command", c.GetId())
 			return c
 		}
-	}
-	if !ok {
+	} else {
 		self.lock.Lock()
 		var cmds []Command
 		c := NewCasperCmd(tmpl+"_"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
@@ -65,6 +65,7 @@ func (self *ServerData) GetNewCommand(tmpl, proxyServer string) Command {
 
 	c := NewCasperCmd(tmpl+"_"+strconv.FormatInt(time.Now().UnixNano(), 10), tmpl, proxyServer)
 	val = append(val, c)
+	self.index[c.GetId()] = c
 	return c
 }
 
@@ -82,6 +83,7 @@ func (self *ServerData) GetCommand(id string) Command {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 
+	log.Println("get cmd", self.index)
 	val, ok := self.index[id]
 	if !ok {
 		return nil
