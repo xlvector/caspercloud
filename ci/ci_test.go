@@ -162,7 +162,7 @@ func TestForm(t *testing.T) {
 			ret = getJson(ENDPOINT + "/submit?tmpl=form&_verify_code=123456&id=" + id)
 			log.Println(ret)
 			if ret["result"] != "Thanks" {
-				t.Error("result not right")
+				t.Error("result not right:" + ret["result"])
 			}
 		}()
 	}
