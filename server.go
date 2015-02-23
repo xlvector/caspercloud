@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/BigTong/gocounter"
 	"github.com/pmylund/go-cache"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -60,6 +62,35 @@ func (self *CasperServer) getRandId(req *http.Request) string {
 	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
+func (self *CasperServer) getProxy() string {
+	c := &http.Client{
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				deadline := time.Now().Add(5 * time.Second)
+				c, err := net.DialTimeout(network, addr, 5*time.Second)
+				if err != nil {
+					return nil, err
+				}
+				c.SetDeadline(deadline)
+				return c, nil
+			},
+			DisableKeepAlives:     true,
+			ResponseHeaderTimeout: 5 * time.Second,
+			DisableCompression:    false,
+		},
+	}
+	resp, err := c.Get("http://54.223.171.0:7183/select")
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -72,7 +103,8 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	id := params.Get("id")
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
-		proxyServer := params.Get("proxy")
+		proxyServer := self.getProxy()
+		log.Println("use proxy:", proxyServer)
 		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
 		if c == nil {
 			log.Println("server is to busy", tmpl)
