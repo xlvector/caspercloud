@@ -90,7 +90,7 @@ func (self *CasperCmd) GetArgsValue(key string) string {
 			return val
 		}
 	}
-	return ""
+
 }
 
 func (self *CasperCmd) getArgsList(args string) []string {

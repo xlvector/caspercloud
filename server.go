@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"github.com/BigTong/gocounter"
 	"github.com/pmylund/go-cache"
+	"golang.org/x/net/websocket"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -33,8 +35,8 @@ func NewCasperServer() *CasperServer {
 	}
 }
 
-func (self *CasperServer) setArgs(cmd Command, req *http.Request) string {
-	args := self.getArgs(req)
+func (self *CasperServer) setArgs(cmd Command, params url.Values) string {
+	args := self.getArgs(params)
 	log.Println("setArgs:", args)
 	cmd.SetInputArgs(args)
 
@@ -46,8 +48,7 @@ func (self *CasperServer) setArgs(cmd Command, req *http.Request) string {
 	return kInternalErrorResut
 }
 
-func (self *CasperServer) getArgs(req *http.Request) map[string]string {
-	params := req.URL.Query()
+func (self *CasperServer) getArgs(params url.Values) map[string]string {
 	args := make(map[string]string)
 	for k, _ := range params {
 		if strings.HasPrefix(k, "_") {
@@ -81,6 +82,7 @@ func (self *CasperServer) getProxy() string {
 	}
 	resp, err := c.Get("http://54.223.171.0:7183/select")
 	if err != nil {
+		log.Print("select proxy fail:", err)
 		return ""
 	}
 	defer resp.Body.Close()
@@ -89,6 +91,72 @@ func (self *CasperServer) getProxy() string {
 		return ""
 	}
 	return string(b)
+}
+
+func (self *CasperServer) ServeWebSocket(ws *websocket.Conn) {
+	for {
+		var reply string
+
+		if err := websocket.Message.Receive(ws, &reply); err != nil {
+			log.Println("Can't receive")
+			break
+		}
+
+		params, err := url.ParseQuery(reply)
+		if err != nil {
+			break
+		}
+
+		msg := self.Process(params)
+		if err := websocket.Message.Send(ws, msg); err != nil {
+			log.Println("Can't send")
+			break
+		}
+	}
+}
+
+func (self *CasperServer) Process(params url.Values) string {
+	id := params.Get("id")
+	if len(id) == 0 {
+		tmpl := params.Get("tmpl")
+		proxyServer := self.getProxy()
+		log.Println("use proxy:", proxyServer)
+		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
+		if c == nil {
+			log.Println("server is to busy", tmpl)
+			return "server is too busy"
+		}
+
+		id = self.getRandId(nil)
+		self.clientData.Set(id, c.GetId(), kKeepMinutes*time.Minute)
+		log.Println("cmd, ", c.GetId(), self.cmdData.index)
+
+		params.Add("_id", id)
+		params.Add("_start", "yes")
+		return self.setArgs(c, params)
+	}
+
+	log.Println("get id", id)
+	value, ok := self.clientData.Get(id)
+	if ok {
+		if id, ok := value.(string); ok {
+			c := self.cmdData.GetCommand(id)
+			if c == nil {
+				log.Println("your input is time out", id)
+				return "your input is time out"
+			}
+
+			if c.Finished() {
+				self.clientData.Delete(id)
+				log.Println("your input is finished", id)
+				return "your input is finished"
+			}
+			log.Println("get cmd", id)
+			return self.setArgs(c, params)
+		}
+		log.Println("not get cmd")
+	}
+	return "your input is time out"
 }
 
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -100,54 +168,8 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}()
 	self.ct.Incr("request", 1)
 	params := req.URL.Query()
-	id := params.Get("id")
-	if len(id) == 0 {
-		tmpl := params.Get("tmpl")
-		proxyServer := self.getProxy()
-		log.Println("use proxy:", proxyServer)
-		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
-		if c == nil {
-			log.Println("server is to busy", tmpl)
-			fmt.Fprint(w, "server is to busy")
-			return
-		}
-
-		id = self.getRandId(req)
-		self.clientData.Set(id, c.GetId(), kKeepMinutes*time.Minute)
-		log.Println("cmd, ", c.GetId(), self.cmdData.index)
-
-		params.Add("_id", id)
-		params.Add("_start", "yes")
-		req.URL.RawQuery = params.Encode()
-		fmt.Fprint(w, self.setArgs(c, req))
-		return
-	}
-
-	log.Println("get id", id)
-	value, ok := self.clientData.Get(id)
-	if ok {
-		if id, ok := value.(string); ok {
-			c := self.cmdData.GetCommand(id)
-			if c == nil {
-				log.Println("your input is time out", id)
-				fmt.Fprint(w, "your input is time out")
-				return
-			}
-
-			if c.Finished() {
-				self.clientData.Delete(id)
-				log.Println("your input is finished", id)
-				fmt.Fprint(w, "your input is finished")
-				return
-			}
-			log.Println("get cmd", id)
-			fmt.Fprint(w, self.setArgs(c, req))
-			return
-		}
-		log.Println("not get cmd")
-		return
-	}
-	fmt.Fprint(w, "your input is time out")
+	ret := self.Process(params)
+	fmt.Fprint(w, ret)
 	return
 
 }
