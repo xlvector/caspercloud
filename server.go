@@ -25,13 +25,15 @@ type CasperServer struct {
 	clientData *cache.Cache
 	cmdData    *ServerData
 	ct         *gocounter.Counter
+	Host       string
 }
 
-func NewCasperServer() *CasperServer {
+func NewCasperServer(host string) *CasperServer {
 	return &CasperServer{
 		clientData: cache.New(10*time.Minute, 10*time.Minute),
 		cmdData:    NewServerData(),
 		ct:         gocounter.NewCounter(),
+		Host:       host,
 	}
 }
 
@@ -115,7 +117,17 @@ func (self *CasperServer) ServeWebSocket(ws *websocket.Conn) {
 	}
 }
 
+func (self *CasperServer) stringify(m map[string]interface{}) string {
+	output, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	return string(output)
+}
+
 func (self *CasperServer) Process(params url.Values) string {
+	ret := make(map[string]interface{})
+	ret["host"] = self.Host
 	id := params.Get("id")
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
@@ -124,7 +136,8 @@ func (self *CasperServer) Process(params url.Values) string {
 		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
 		if c == nil {
 			log.Println("server is to busy", tmpl)
-			return "server is too busy"
+			ret["return_code"] = 1
+			return self.stringify(ret)
 		}
 
 		id = self.getRandId(nil)
@@ -143,20 +156,25 @@ func (self *CasperServer) Process(params url.Values) string {
 			c := self.cmdData.GetCommand(id)
 			if c == nil {
 				log.Println("your input is time out", id)
-				return "your input is time out"
+				ret["return_code"] = 1
+				return self.stringify(ret)
 			}
 
 			if c.Finished() {
 				self.clientData.Delete(id)
 				log.Println("your input is finished", id)
-				return "your input is finished"
+				ret["return_code"] = 1
+				return self.stringify(ret)
 			}
 			log.Println("get cmd", id)
-			return self.setArgs(c, params)
+			ret["return_code"] = 0
+			ret["data"] = self.setArgs(c, params)
+			return self.stringify(ret)
 		}
 		log.Println("not get cmd")
 	}
-	return "your input is time out"
+	ret["return_code"] = 1
+	return self.stringify(ret)
 }
 
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {

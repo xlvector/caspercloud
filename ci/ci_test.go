@@ -25,7 +25,7 @@ func init() {
 }
 
 func runMockSite() {
-	service := caspercloud.NewCasperServer()
+	service := caspercloud.NewCasperServer("127.0.0.1")
 	http.Handle("/submit", service)
 	l, e := net.Listen("tcp", ":8000")
 	if e != nil {
