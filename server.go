@@ -110,6 +110,7 @@ func (self *CasperServer) ServeWebSocket(ws *websocket.Conn) {
 		}
 
 		msg := self.Process(params)
+		log.Println("send message:", msg)
 		if err := websocket.Message.Send(ws, msg); err != nil {
 			log.Println("Can't send")
 			break
