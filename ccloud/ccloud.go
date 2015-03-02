@@ -6,6 +6,9 @@ import (
 	"github.com/xlvector/caspercloud"
 	_ "github.com/xlvector/caspercloud/ci"
 	"golang.org/x/net/websocket"
+	"github.com/xlvector/caspercloud"
+	_ "github.com/xlvector/caspercloud/ci"
+
 	"log"
 	"net"
 	"net/http"
@@ -55,7 +58,6 @@ func main() {
 			http.FileServer(http.Dir("./images"))))
 	http.Handle("/site/",
 		http.StripPrefix("/site/",
-			http.FileServer(http.Dir("./site"))))
 	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
 		log.Fatal("listen error:", e)
