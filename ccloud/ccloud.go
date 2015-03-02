@@ -56,7 +56,6 @@ func main() {
 	http.Handle("/site/",
 		http.StripPrefix("/site/",
 			http.FileServer(http.Dir("./site"))))
-
 	l, e := net.Listen("tcp", ":"+*port)
 	if e != nil {
 		log.Fatal("listen error:", e)
