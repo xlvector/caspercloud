@@ -110,6 +110,7 @@ func (self *CasperServer) ServeWebSocket(ws *websocket.Conn) {
 		}
 
 		msg := self.Process(params)
+		log.Println("send message:", msg)
 		if err := websocket.Message.Send(ws, msg); err != nil {
 			log.Println("Can't send")
 			break
@@ -126,9 +127,8 @@ func (self *CasperServer) stringify(m map[string]interface{}) string {
 }
 
 func (self *CasperServer) Process(params url.Values) string {
-	ret := make(map[string]interface{})
-	ret["host"] = self.Host
 	id := params.Get("id")
+	ret := make(map[string]interface{})
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
 		proxyServer := self.getProxy()
@@ -167,9 +167,7 @@ func (self *CasperServer) Process(params url.Values) string {
 				return self.stringify(ret)
 			}
 			log.Println("get cmd", id)
-			ret["return_code"] = 0
-			ret["data"] = self.setArgs(c, params)
-			return self.stringify(ret)
+			return self.setArgs(c, params)
 		}
 		log.Println("not get cmd")
 	}

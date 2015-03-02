@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/xlvector/caspercloud"
 	_ "github.com/xlvector/caspercloud/ci"
 	"golang.org/x/net/websocket"
@@ -45,9 +46,9 @@ func main() {
 
 	service := caspercloud.NewCasperServer(*host)
 	http.Handle("/submit", service)
-	http.Handle("/start", HandleStart)
-	http.Handle("/shutdown", HandleShutdown)
-	http.Handle("/health", HandleHealth)
+	http.HandleFunc("/start", HandleStart)
+	http.HandleFunc("/shutdown", HandleShutdown)
+	http.HandleFunc("/health", HandleHealth)
 	http.Handle("/ws/submit", websocket.Handler(service.ServeWebSocket))
 	http.Handle("/images/",
 		http.StripPrefix("/images/",
