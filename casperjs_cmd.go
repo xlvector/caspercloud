@@ -2,6 +2,10 @@ package caspercloud
 
 import (
 	"bufio"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"os"
@@ -20,6 +24,7 @@ type CasperCmd struct {
 	isFinish    bool
 	args        map[string]string
 	status      int
+	privateKey  *rsa.PrivateKey
 }
 
 func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
@@ -33,6 +38,11 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		status:      kCommandStatusIdle,
 		isKill:      false,
 		isFinish:    false,
+	}
+	var err error
+	ret.privateKey, err = generateRSAKey()
+	if err != nil {
+		log.Fatalln("fail to generate rsa key", err)
 	}
 	go ret.run()
 	return ret
@@ -99,10 +109,27 @@ func (self *CasperCmd) getArgsList(args string) []string {
 		return nil
 	}
 	return segs[1:]
+
 }
 
 func (self *CasperCmd) Finished() bool {
 	return self.isKill || self.isFinish
+}
+
+func (self *CasperCmd) DecodePassword(p string) string {
+	bp, err := hex.DecodeString(p)
+	if err != nil {
+		log.Println("decode password hex error:", err)
+		return ""
+	}
+	out, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, self.privateKey,
+		bp, []byte(""))
+	if err != nil {
+		log.Println("decode password error:", err)
+		return ""
+	}
+	log.Println("decode password:", string(out))
+	return string(out)
 }
 
 func (self *CasperCmd) run() {
@@ -119,9 +146,16 @@ func (self *CasperCmd) run() {
 	defer cookieFile.Close()
 	var cmd *exec.Cmd
 	if len(self.proxyServer) == 0 {
-		cmd = exec.Command("casperjs", self.tmpl+".js", "--web-security=no", "--cookies-file="+path+"/cookie.txt", "--context="+path)
+		cmd = exec.Command("casperjs", self.tmpl+".js",
+			"--web-security=no",
+			"--cookies-file="+path+"/cookie.txt",
+			"--context="+path)
 	} else {
-		cmd = exec.Command("casperjs", self.tmpl+".js", "--web-security=no", "--cookies-file="+path+"/cookie.txt", "--proxy="+self.proxyServer, "--proxy-type=http", "--context="+path)
+		cmd = exec.Command("casperjs", self.tmpl+".js",
+			"--web-security=no",
+			"--cookies-file="+path+"/cookie.txt",
+			"--proxy="+self.proxyServer, "--proxy-type=http",
+			"--context="+path)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -161,13 +195,22 @@ func (self *CasperCmd) run() {
 
 		if strings.HasPrefix(line, "CMD INFO STARTED") {
 			start = true
+			message := map[string]interface{}{
+				"public_key": string(publicKeyString(&self.privateKey.PublicKey)),
+				"id":         self.GetArgsValue("id"),
+			}
+			self.message <- message
 			continue
 		}
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
 			for _, v := range self.getArgsList(line) {
 				key := strings.TrimRight(v, "\n")
-				bufin.WriteString(self.GetArgsValue(key))
+				val := self.GetArgsValue(key)
+				if key == "password" {
+					val = self.DecodePassword(val)
+				}
+				bufin.WriteString(val)
 				delete(self.args, key)
 				bufin.WriteRune('\n')
 				bufin.Flush()
@@ -177,6 +220,7 @@ func (self *CasperCmd) run() {
 
 		if strings.HasPrefix(line, "CMD INFO RANDCODE") {
 			message := make(map[string]interface{})
+			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
 			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
 			result = strings.Trim(result, " \n")
@@ -189,6 +233,7 @@ func (self *CasperCmd) run() {
 
 		if strings.HasPrefix(line, "CMD INFO CONTENT") {
 			message := make(map[string]interface{})
+			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
 			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
 			result = strings.Trim(result, " \n")
@@ -210,6 +255,7 @@ func (self *CasperCmd) run() {
 		if strings.HasPrefix(line, "CMD EXIT") {
 			message := make(map[string]interface{})
 			message["id"] = self.GetArgsValue("id")
+			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
 			message[kJobStatus] = kJobFailed
 			log.Println("send result:", message)
 			if start {
