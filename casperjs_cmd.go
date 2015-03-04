@@ -15,29 +15,35 @@ import (
 )
 
 type CasperCmd struct {
-	proxyServer string
-	id          string
-	tmpl        string
-	message     chan map[string]interface{}
-	input       chan map[string]string
-	isKill      bool
-	isFinish    bool
-	args        map[string]string
-	status      int
-	privateKey  *rsa.PrivateKey
+	proxyServer   string
+	id            string
+	tmpl          string
+	userName      string
+	passWord      string
+	message       chan map[string]interface{}
+	input         chan map[string]string
+	isKill        bool
+	isFinish      bool
+	args          map[string]string
+	status        int
+	privateKey    *rsa.PrivateKey
+	mailProcessor *MailProcessor
 }
 
 func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 	ret := &CasperCmd{
-		proxyServer: proxyServer,
-		id:          id,
-		tmpl:        tmpl,
-		message:     make(chan map[string]interface{}, 1),
-		input:       make(chan map[string]string, 1),
-		args:        make(map[string]string),
-		status:      kCommandStatusIdle,
-		isKill:      false,
-		isFinish:    false,
+		proxyServer:   proxyServer,
+		id:            id,
+		tmpl:          tmpl,
+		userName:      "",
+		passWord:      "",
+		message:       make(chan map[string]interface{}, 1),
+		input:         make(chan map[string]string, 1),
+		args:          make(map[string]string),
+		status:        kCommandStatusIdle,
+		isKill:        false,
+		isFinish:      false,
+		mailProcessor: NewMailProcessor(),
 	}
 	var err error
 	ret.privateKey, err = generateRSAKey()
@@ -73,6 +79,14 @@ func (self *CasperCmd) readInputArgs(key string) string {
 	args := <-self.input
 	log.Println("read args:", args)
 	for k, v := range args {
+		if k == "username" {
+			self.userName = v
+		}
+
+		if k == "password" {
+			self.passWord = v
+		}
+
 		self.args[k] = v
 	}
 	if val, ok := self.args[key]; ok {
@@ -109,7 +123,17 @@ func (self *CasperCmd) getArgsList(args string) []string {
 		return nil
 	}
 	return segs[1:]
+}
 
+func (self *CasperCmd) getMetaInfo() map[string]string {
+	var metaInfo = make(map[string]string)
+	metaInfo["private_key"] = string(privateKeyString(self.privateKey))
+	metaInfo["tmpl"] = self.tmpl
+	metaInfo["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
+	metaInfo["username"] = self.userName
+	metaInfo["password"] = self.passWord
+	metaInfo["row_key"] = self.tmpl + "|" + self.userName
+	return metaInfo
 }
 
 func (self *CasperCmd) Finished() bool {
@@ -245,6 +269,7 @@ func (self *CasperCmd) run() {
 			}
 			message[kJobStatus] = kJobFinished
 			log.Println("send result:", message)
+			go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
 			LoadDownloads(out.Downloads)
 			self.message <- message
 			self.status = kCommandStatusIdle
