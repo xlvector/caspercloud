@@ -267,5 +267,6 @@ func (self *CasperCmd) run() {
 			break
 		}
 	}
+	self.status = kCommandStatusIdle
 	self.isFinish = true
 }
