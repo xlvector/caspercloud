@@ -270,7 +270,6 @@ func (self *CasperCmd) run() {
 			message[kJobStatus] = kJobFinished
 			log.Println("send result:", message)
 			go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
-			LoadDownloads(out.Downloads)
 			self.message <- message
 			self.status = kCommandStatusIdle
 			start = false

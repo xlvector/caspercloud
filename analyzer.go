@@ -3,6 +3,7 @@ package caspercloud
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"log"
@@ -91,12 +92,14 @@ func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bo
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("open file failed:", err.Error())
+		return false
 	}
 	defer f.Close()
 
 	fd, err := ioutil.ReadAll(f)
 	if err != nil {
 		log.Println("read file get error:", err.Error())
+		return false
 	}
 
 	/*
@@ -117,10 +120,13 @@ func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bo
 
 	info["row_html"] = string(fd)
 
-	params := url.Values{}
-	for key, value := range info {
-		params.Set(key, value)
+	value, err := json.Marshal(info)
+	if err != nil {
+		log.Println("marshal json get err:", err.Error())
+		return false
 	}
+	params := url.Values{}
+	params.Set("data", string(value))
 	reqest, err := http.NewRequest("POST", kParserServer, bytes.NewReader([]byte(params.Encode())))
 	if err != nil {
 		log.Println("new request get error:", err.Error())
