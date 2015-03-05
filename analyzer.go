@@ -90,8 +90,8 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 	if err != nil {
 		log.Fatal("marshal mails get err:", err.Error())
 	}
-	metaInfo["row_html"] = string(htmls)
-	metaInfo["row_html_len"] = strconv.FormatInt(int64(len(htmls)), 10)
+	metaInfo["raw_html"] = string(htmls)
+	metaInfo["raw_html_len"] = strconv.FormatInt(int64(len(htmls)), 10)
 
 	data, err := json.Marshal(metaInfo)
 	if err != nil {
