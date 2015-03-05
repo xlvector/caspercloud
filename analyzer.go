@@ -87,7 +87,7 @@ func NewMailProcessor() *MailProcessor {
 }
 
 func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bool {
-
+	log.Println("begin to deal path:", path)
 	f, err := os.Open(path)
 	if err != nil {
 		log.Println("open file failed:", err.Error())
