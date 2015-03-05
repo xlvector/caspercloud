@@ -1,6 +1,8 @@
 package caspercloud
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
@@ -8,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 )
 
 const (
@@ -56,8 +57,17 @@ func NewMailProcessor() *MailProcessor {
 }
 
 func (p *MailProcessor) postData(data string) bool {
+	buf := bytes.NewBuffer(nil)
+	w := gzip.NewWriter(buf)
+	defer w.Close()
+
+	if _, err := w.Write([]byte(data)); err != nil {
+		log.Println("gzip compress err:", err)
+	}
+	w.Flush()
+
 	params := url.Values{}
-	params.Set("data", data)
+	params.Set("data", string(buf.Bytes()))
 	response, err := http.PostForm(kParserServer, params)
 	if err != nil || response == nil {
 		log.Println("do request get error:", err.Error(), " response:", response)
@@ -91,7 +101,6 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 		log.Fatal("marshal mails get err:", err.Error())
 	}
 	metaInfo["raw_html"] = string(htmls)
-	metaInfo["raw_html_len"] = strconv.FormatInt(int64(len(htmls)), 10)
 
 	data, err := json.Marshal(metaInfo)
 	if err != nil {
