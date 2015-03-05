@@ -1,7 +1,6 @@
 package caspercloud
 
 import (
-	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
@@ -127,19 +126,25 @@ func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bo
 	}
 	params := url.Values{}
 	params.Set("data", string(value))
-	reqest, err := http.NewRequest("POST", kParserServer, bytes.NewReader([]byte(params.Encode())))
-	if err != nil {
-		log.Println("new request get error:", err.Error())
-		return false
-	}
+	/*
+		reqest, err := http.NewRequest("POST", kParserServer, bytes.NewReader([]byte(params.Encode())))
+		if err != nil {
+			log.Println("new request get error:", err.Error())
+			return false
+		}
 
-	response, err := mailProcessor.client.Do(reqest)
+		response, err := mailProcessor.client.Do(reqest)
+	*/
+	response, err := http.PostForm(kParserServer, params)
 	if err != nil || response == nil {
 		log.Println("do request get error:", err.Error(), " response:", response)
 		return false
 	}
+	defer response.Body.Close()
 
-	log.Println("|path|", path, "|post result|", *response)
+	body, _ := ioutil.ReadAll(response.Body)
+
+	log.Println("|path|", path, "|post result|", string(body))
 	return true
 
 }
