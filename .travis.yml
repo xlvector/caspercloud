@@ -18,5 +18,6 @@ install:
     - go get github.com/pmylund/go-cache
     - go get github.com/BigTong/gocounter
     - go get github.com/PuerkitoBio/goquery
+    - go get github.com/jhillyerd/go.enmime
     - go install github.com/xlvector/caspercloud/ccloud
     - go test -v -bench=. github.com/xlvector/caspercloud/ci
