@@ -1,16 +1,14 @@
 package caspercloud
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"time"
+	"strconv"
 )
 
 const (
@@ -50,91 +48,16 @@ func ParseFile(fn string) error {
 	return nil
 }
 
-func newHttpClient(timeOutSeconds int) *http.Client {
-	client := &http.Client{
-		Transport: &http.Transport{
-			Dial: func(netw, addr string) (net.Conn, error) {
-				timeout := time.Duration(timeOutSeconds) * time.Second
-				deadline := time.Now().Add(timeout)
-				c, err := net.DialTimeout(netw, addr, timeout)
-				if err != nil {
-					return nil, err
-				}
-				c.SetDeadline(deadline)
-				return c, nil
-			},
-			DisableKeepAlives:     true,
-			ResponseHeaderTimeout: time.Duration(timeOutSeconds) * time.Second,
-			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-		},
-	}
-	return client
-}
-
 type MailProcessor struct {
-	client *http.Client
 }
 
 func NewMailProcessor() *MailProcessor {
-	c := newHttpClient(20)
-	if c == nil {
-		return nil
-	}
-
-	return &MailProcessor{
-		client: c,
-	}
+	return &MailProcessor{}
 }
 
-func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bool {
-	log.Println("begin to deal path:", path)
-	f, err := os.Open(path)
-	if err != nil {
-		log.Println("open file failed:", err.Error())
-		return false
-	}
-	defer f.Close()
-
-	fd, err := ioutil.ReadAll(f)
-	if err != nil {
-		log.Println("read file get error:", err.Error())
-		return false
-	}
-
-	/*
-		msg, err := mail.ReadMessage(f)
-		if err != nil {
-			log.Println("open file get error:", err.Error())
-			return false
-		}
-
-		// TODO add header info
-		// msg.Header
-
-		body, err := enmime.ParseMIMEBody(msg)
-		if err != nil {
-			return false
-		}
-	*/
-
-	info["row_html"] = string(fd)
-
-	value, err := json.Marshal(info)
-	if err != nil {
-		log.Println("marshal json get err:", err.Error())
-		return false
-	}
+func (p *MailProcessor) postData(data string) bool {
 	params := url.Values{}
-	params.Set("data", string(value))
-	/*
-		reqest, err := http.NewRequest("POST", kParserServer, bytes.NewReader([]byte(params.Encode())))
-		if err != nil {
-			log.Println("new request get error:", err.Error())
-			return false
-		}
-
-		response, err := mailProcessor.client.Do(reqest)
-	*/
+	params.Set("data", data)
 	response, err := http.PostForm(kParserServer, params)
 	if err != nil || response == nil {
 		log.Println("do request get error:", err.Error(), " response:", response)
@@ -144,14 +67,36 @@ func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bo
 
 	body, _ := ioutil.ReadAll(response.Body)
 
-	log.Println("|path|", path, "|post result|", string(body))
+	log.Println("|post result|", string(body))
 	return true
-
 }
 
 func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) bool {
+	var mails []string
 	for _, fn := range downloads {
-		p.deal(metaInfo, fn)
+		f, err := os.Open(fn)
+		if err != nil {
+			log.Fatal("open file get error:", err.Error())
+		}
+
+		fd, err := ioutil.ReadAll(f)
+		if err != nil {
+			log.Fatal("read file get error:", err.Error())
+		}
+		mails = append(mails, string(fd))
+		f.Close()
 	}
+	htmls, err := json.Marshal(mails)
+	if err != nil {
+		log.Fatal("marshal mails get err:", err.Error())
+	}
+	metaInfo["row_html"] = string(htmls)
+	metaInfo["row_html_len"] = strconv.FormatInt(int64(len(htmls)), 10)
+
+	data, err := json.Marshal(metaInfo)
+	if err != nil {
+		log.Fatal("marshal metainfo get error:", err.Error())
+	}
+	p.postData(string(data))
 	return true
 }
