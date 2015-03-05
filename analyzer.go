@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"crypto/tls"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jhillyerd/go.enmime"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/mail"
 	"net/url"
 	"os"
 	"time"
 )
 
 const (
-	kParserServer = "http://10.180.180.127:9000/submit"
+	kParserServer = "http://parser.crawler.bdp.cc/submit"
 )
 
 type Mail struct {
@@ -88,22 +87,35 @@ func NewMailProcessor() *MailProcessor {
 }
 
 func (mailProcessor *MailProcessor) deal(info map[string]string, path string) bool {
-	f, _ := os.Open(path)
-	msg, err := mail.ReadMessage(f)
+
+	f, err := os.Open(path)
 	if err != nil {
-		log.Println("open file get error:", err.Error())
-		return false
+		log.Println("open file failed:", err.Error())
+	}
+	defer f.Close()
+
+	fd, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Println("read file get error:", err.Error())
 	}
 
-	// TODO add header info
-	// msg.Header
+	/*
+		msg, err := mail.ReadMessage(f)
+		if err != nil {
+			log.Println("open file get error:", err.Error())
+			return false
+		}
 
-	body, err := enmime.ParseMIMEBody(msg)
-	if err != nil {
-		return false
-	}
+		// TODO add header info
+		// msg.Header
 
-	info["row_html"] = body.Html
+		body, err := enmime.ParseMIMEBody(msg)
+		if err != nil {
+			return false
+		}
+	*/
+
+	info["row_html"] = string(fd)
 
 	params := url.Values{}
 	for key, value := range info {
