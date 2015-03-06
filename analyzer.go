@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 const (
@@ -83,8 +84,12 @@ func (p *MailProcessor) postData(data string) bool {
 
 func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) bool {
 	var mails []string
+	isZip := false
 	for _, fn := range downloads {
 		f, err := os.Open(fn)
+		if strings.HasSuffix(fn, ".zip") {
+			isZip = true
+		}
 		if err != nil {
 			log.Fatal("open file get error:", err.Error())
 		}
@@ -101,6 +106,12 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 		log.Fatal("marshal mails get err:", err.Error())
 	}
 	metaInfo["raw_html"] = string(htmls)
+
+	if isZip {
+		metaInfo["is_zip"] = "true"
+	} else {
+		metaInfo["is_zip"] = "false"
+	}
 
 	data, err := json.Marshal(metaInfo)
 	if err != nil {
