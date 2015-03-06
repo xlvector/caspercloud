@@ -131,8 +131,11 @@ func (self *CasperServer) Process(params url.Values) string {
 	ret := make(map[string]interface{})
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
-		proxyServer := self.getProxy()
-		log.Println("use proxy:", proxyServer)
+		proxyServer := ""
+		if params.Get("proxy") == "true" {
+			proxyServer := self.getProxy()
+			log.Println("use proxy:", proxyServer)
+		}
 		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
 		if c == nil {
 			log.Println("server is to busy", tmpl)
