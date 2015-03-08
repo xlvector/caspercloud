@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"os/exec"
@@ -156,6 +157,40 @@ func (self *CasperCmd) DecodePassword(p string) string {
 	return string(out)
 }
 
+func (self *CasperCmd) getHostByTmpl() string {
+	switch self.tmpl {
+	case "mail_163":
+		return "163.com"
+	case "mail_qq":
+		return "qq.com"
+	case "mail_126":
+		return "126.com"
+	case "mail_139":
+		return "139.com"
+	case "mail_aliyun":
+		return "aliyun.com"
+	default:
+		return ""
+	}
+	return ""
+}
+
+func (self *CasperCmd) tryPop3(line string) ([]string, error) {
+	if strings.HasPrefix(line, "CMD GET ARGS") {
+		req := strings.TrimPrefix(line, "CMD GET ARGS")
+		req = strings.Trim(req, " \n\t")
+		if req == "/username/password" {
+			log.Println("try pop3")
+			username := self.GetArgsValue("username")
+			password := self.GetArgsValue("password")
+			password = self.DecodePassword(password)
+			log.Println("try pop3 use", username, password)
+			return Pop3ReceiveMail(username+"@"+self.getHostByTmpl(), password)
+		}
+	}
+	return nil, errors.New("invalid command")
+}
+
 func (self *CasperCmd) run() {
 	self.isFinish = false
 	self.isKill = false
@@ -228,6 +263,17 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
+			_, err = self.tryPop3(line)
+			if err == nil {
+				message := map[string]interface{}{
+					"id":     self.GetArgsValue("id"),
+					"result": "pop3_success",
+				}
+				self.message <- message
+				break
+			} else {
+				log.Println("try pop3 error: ", err)
+			}
 			for _, v := range self.getArgsList(line) {
 				key := strings.TrimRight(v, "\n")
 				val := self.GetArgsValue(key)
