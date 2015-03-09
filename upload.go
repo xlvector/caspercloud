@@ -2,6 +2,7 @@ package caspercloud
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -9,6 +10,27 @@ import (
 	"os"
 	"path/filepath"
 )
+
+func UploadImage(path string) string {
+	params := map[string]string{
+		"file": path,
+	}
+	b, err := upload("https://static.qiangxianhua.com/upload",
+		params, "file", path)
+	if err != nil {
+		return ""
+	}
+	var out map[string]string
+	err = json.Unmarshal(b, &out)
+	if err != nil {
+		return ""
+	}
+	ret, ok := out["file_url"]
+	if !ok {
+		return ""
+	}
+	return ret
+}
 
 func upload(link string, params map[string]string,
 	paramName, path string) ([]byte, error) {
