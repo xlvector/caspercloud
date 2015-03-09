@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 )
@@ -68,9 +67,9 @@ func (p *MailProcessor) postData(data string) bool {
 	}
 	w.Flush()
 
-	params := url.Values{}
-	params.Set("data", string(buf.Bytes()))
-	response, err := http.PostForm(kParserServer, params)
+	//params := url.Values{}
+	//params.Set("data", string(buf.Bytes()))
+	response, err := http.Post(kParserServer, "plain/text", buf)
 	if err != nil || response == nil {
 		log.Println("do request get error:", err.Error(), " response:", response)
 		return false
