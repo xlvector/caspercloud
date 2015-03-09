@@ -309,8 +309,6 @@ func (self *CasperCmd) run() {
 			}
 			message["result"] = result
 			message[kJobStatus] = kJobOndoing
-			result = UploadImage("./site/" + result)
-			PostDataToSlack(result, "captcha")
 			log.Println("send result:", message)
 			self.message <- message
 			continue
