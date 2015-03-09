@@ -288,6 +288,12 @@ func (self *CasperCmd) run() {
 			continue
 		}
 
+		if strings.HasPrefix(line, "CMD INFO LOGIN SUCCESS") {
+			var out CasperOutput
+			go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
+			continue
+		}
+
 		if strings.HasPrefix(line, "CMD INFO RANDCODE") {
 			message := make(map[string]interface{})
 			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
