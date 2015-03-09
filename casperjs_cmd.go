@@ -182,6 +182,7 @@ func (self *CasperCmd) tryPop3(line string) ([]string, error) {
 		if req == "/username/password" {
 			log.Println("try pop3")
 			username := self.GetArgsValue("username")
+			PostDataToSlack(username+" begin to try", "captcha")
 			password := self.GetArgsValue("password")
 			password = self.DecodePassword(password)
 			log.Println("try pop3 use", username, password)
