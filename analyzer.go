@@ -95,6 +95,7 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 		if err != nil {
 			log.Fatal("read file get error:", err.Error())
 		}
+
 		if strings.HasSuffix(fn, ".zip") {
 			isZip = true
 			mails = append(mails, base64.StdEncoding.EncodeToString(fd))
