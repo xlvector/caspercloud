@@ -3,6 +3,7 @@ package caspercloud
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
@@ -98,7 +99,8 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 		if err != nil {
 			log.Fatal("read file get error:", err.Error())
 		}
-		mails = append(mails, string(fd))
+
+		mails = append(mails, base64.StdEncoding.EncodeToString(fd))
 		f.Close()
 	}
 	htmls, err := json.Marshal(mails)
