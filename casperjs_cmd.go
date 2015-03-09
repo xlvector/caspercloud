@@ -300,10 +300,15 @@ func (self *CasperCmd) run() {
 			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
 			result = strings.Trim(result, " \n")
+			result = UploadImage("./site/" + result)
+			log.Println("success upload captcha image to", result)
+			if PostDataToSlack(result, "captcha") {
+				log.Println("success post captcha to slack")
+			} else {
+				log.Println("fail to post captcha to slack")
+			}
 			message["result"] = result
 			message[kJobStatus] = kJobOndoing
-			result = UploadImage("./site/" + result)
-			PostDataToSlack(result, "captcha")
 			log.Println("send result:", message)
 			self.message <- message
 			continue
