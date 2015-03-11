@@ -264,17 +264,19 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
-			_, err = self.tryPop3(line)
-			if err == nil {
-				message := map[string]interface{}{
-					"id":     self.GetArgsValue("id"),
-					"result": "pop3_success",
+			/*
+				_, err = self.tryPop3(line)
+				if err == nil {
+					message := map[string]interface{}{
+						"id":     self.GetArgsValue("id"),
+						"result": "pop3_success",
+					}
+					self.message <- message
+					break
+				} else {
+					log.Println("try pop3 error: ", err)
 				}
-				self.message <- message
-				break
-			} else {
-				log.Println("try pop3 error: ", err)
-			}
+			*/
 			for _, v := range self.getArgsList(line) {
 				key := strings.TrimRight(v, "\n")
 				val := self.GetArgsValue(key)

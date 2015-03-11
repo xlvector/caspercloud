@@ -15,6 +15,12 @@ func getAddressByUsername(username string) string {
 	switch tks[1] {
 	case "aliyun.com":
 		return "pop3.mail.aliyun.com:110"
+	case "qq.com":
+		return "pop.qq.com:110"
+	case "126.com":
+		return "pop.126.com:110"
+	case "163.com":
+		return "pop.163.com:110"
 	default:
 		return ""
 	}
@@ -31,7 +37,7 @@ func Pop3ReceiveMail(username, password string) ([]string, error) {
 		func(number int, uid, data string, err error) (bool, error) {
 			log.Println(number, uid)
 			ret = append(ret, data)
-			return true, nil
+			return false, nil
 		}); err != nil {
 		return ret, err
 	}

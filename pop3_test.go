@@ -7,14 +7,12 @@ import (
 )
 
 func TestPop3(t *testing.T) {
-	if err := pop3.ReceiveMail("pop3.mail.aliyun.com:110",
-		"caspercloud@aliyun.com", "Change2Day",
+	if err := pop3.ReceiveMail("pop.qq.com:995",
+		"xlvector@qq.com", "Pi31415926",
 		func(number int, uid, data string, err error) (bool, error) {
 			log.Printf("%d, %s\n", number, uid)
 			log.Println(data)
-			// implement your own logic here
-
-			return false, nil
+			return false, pop3.EOF
 		}); err != nil {
 		log.Fatalf("%v\n", err)
 	}
