@@ -44,7 +44,7 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		status:        kCommandStatusIdle,
 		isKill:        false,
 		isFinish:      false,
-		mailProcessor: NewMailProcessor(),
+		mailProcessor: NewMailProcessor("server_list.json"),
 	}
 	var err error
 	ret.privateKey, err = generateRSAKey()
@@ -126,15 +126,15 @@ func (self *CasperCmd) getArgsList(args string) []string {
 	return segs[1:]
 }
 
-func (self *CasperCmd) getMetaInfo() map[string]string {
-	var metaInfo = make(map[string]string)
-	metaInfo["private_key"] = string(privateKeyString(self.privateKey))
-	metaInfo["tmpl"] = self.tmpl
-	metaInfo["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
-	metaInfo["username"] = self.userName
-	metaInfo["password"] = self.passWord
-	metaInfo["row_key"] = self.tmpl + "|" + self.userName
-	return metaInfo
+func (self *CasperCmd) getMetaInfo() *ParseRequest {
+	ret := &ParseRequest{}
+	ret.PrivateKey = string(privateKeyString(self.privateKey))
+	ret.PublicKey = string(publicKeyString(&self.privateKey.PublicKey))
+	ret.Tmpl = self.tmpl
+	ret.UserName = self.userName
+	ret.Secret = self.passWord
+	ret.RowKey = self.tmpl + "|" + self.userName
+	return ret
 }
 
 func (self *CasperCmd) Finished() bool {

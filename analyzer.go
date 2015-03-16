@@ -1,20 +1,20 @@
 package caspercloud
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
-	"net/http"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
-	kParserServer = "http://parser.crawler.bdp.cc/submit"
+	kMaxTryCount = 5
 )
 
 type Mail struct {
@@ -51,40 +51,70 @@ func ParseFile(fn string) error {
 }
 
 type MailProcessor struct {
+	ServerList   []string `json:"server_list"`
+	conns        []*grpc.ClientConn
+	parseClients []ParserClient
+	random       *rand.Rand
 }
 
-func NewMailProcessor() *MailProcessor {
-	return &MailProcessor{}
-}
-
-func (p *MailProcessor) postData(data string) bool {
-	buf := bytes.NewBuffer(nil)
-	w := gzip.NewWriter(buf)
-	defer w.Close()
-
-	if _, err := w.Write([]byte(data)); err != nil {
-		log.Println("gzip compress err:", err)
+func NewMailProcessor(path string) *MailProcessor {
+	text, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
 	}
-	w.Flush()
-
-	//params := url.Values{}
-	//params.Set("data", string(buf.Bytes()))
-	response, err := http.Post(kParserServer, "plain/text", buf)
-	if err != nil || response == nil {
-		log.Println("do request get error:", err.Error(), " response:", response)
-		return false
+	ret := MailProcessor{}
+	err = json.Unmarshal(text, &ret)
+	if err != nil {
+		panic(err)
 	}
-	defer response.Body.Close()
 
-	body, _ := ioutil.ReadAll(response.Body)
+	for _, addr := range ret.ServerList {
+		conn, _ := grpc.Dial(addr)
+		ret.conns = append(ret.conns, conn)
+		ret.parseClients = append(ret.parseClients, NewParserClient(conn))
+	}
 
-	log.Println("|post result|", string(body))
-	return true
+	ret.random = rand.New(rand.NewSource(time.Now().UnixNano()))
+	return &ret
 }
 
-func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) bool {
-	var mails []string
-	isZip := false
+func (p *MailProcessor) Close() {
+	for _, c := range p.conns {
+		if c != nil {
+			c.Close()
+		}
+	}
+}
+
+func (p *MailProcessor) recoverClient(index int) {
+	if index > len(p.ServerList) {
+		return
+	}
+	if p.conns[index] != nil {
+		p.conns[index].Close()
+	}
+
+	p.conns[index], _ = grpc.Dial(p.ServerList[index])
+	p.parseClients[index] = NewParserClient(p.conns[index])
+}
+
+func (p *MailProcessor) sendReq(req *ParseRequest) bool {
+	for i := 0; i < kMaxTryCount; i++ {
+		index := p.random.Intn(len(p.parseClients))
+		reply, err := p.parseClients[index].ProcessParseRequest(context.Background(), req)
+		if err != nil {
+			log.Println("call get error:", err.Error())
+			time.Sleep(1 * time.Second)
+			p.recoverClient(index)
+			continue
+		}
+		log.Println("get server reply:", *reply)
+		return true
+	}
+	return false
+}
+
+func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
 	for _, fn := range downloads {
 		f, err := os.Open(fn)
 		if err != nil {
@@ -97,30 +127,12 @@ func (p *MailProcessor) Process(metaInfo map[string]string, downloads []string) 
 		}
 
 		if strings.HasSuffix(fn, ".zip") {
-			isZip = true
-			mails = append(mails, base64.StdEncoding.EncodeToString(fd))
-		} else {
-			mails = append(mails, string(fd))
+			req.IsZip = true
 		}
 
+		req.Data = append(req.Data, string(fd))
 		f.Close()
 	}
-	htmls, err := json.Marshal(mails)
-	if err != nil {
-		log.Fatal("marshal mails get err:", err.Error())
-	}
-	metaInfo["raw_html"] = string(htmls)
 
-	if isZip {
-		metaInfo["is_zip"] = "true"
-	} else {
-		metaInfo["is_zip"] = "false"
-	}
-
-	data, err := json.Marshal(metaInfo)
-	if err != nil {
-		log.Fatal("marshal metainfo get error:", err.Error())
-	}
-	p.postData(string(data))
-	return true
+	return p.sendReq(req)
 }
