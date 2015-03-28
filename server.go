@@ -138,7 +138,7 @@ func (self *CasperServer) Process(params url.Values) string {
 		}
 		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
 		if c == nil {
-			log.Println("server is to busy", tmpl)
+			log.Println("server is too busy", tmpl)
 			ret["return_code"] = 1
 			return self.stringify(ret)
 		}
