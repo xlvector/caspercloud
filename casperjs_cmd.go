@@ -20,12 +20,11 @@ type CasperCmd struct {
 	tmpl          string
 	userName      string
 	passWord      string
-	message       chan map[string]interface{}
+	message       chan *Output
 	input         chan map[string]string
 	isKill        bool
 	isFinish      bool
 	args          map[string]string
-	status        int
 	privateKey    *rsa.PrivateKey
 	mailProcessor *MailProcessor
 }
@@ -37,10 +36,9 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		tmpl:          tmpl,
 		userName:      "",
 		passWord:      "",
-		message:       make(chan map[string]interface{}, 1),
-		input:         make(chan map[string]string, 1),
+		message:       make(chan *Output, 5),
+		input:         make(chan map[string]string, 5),
 		args:          make(map[string]string),
-		status:        kCommandStatusIdle,
 		isKill:        false,
 		isFinish:      false,
 		mailProcessor: NewMailProcessor("server_list.json"),
@@ -58,10 +56,6 @@ func (self *CasperCmd) GetId() string {
 	return self.id
 }
 
-func (self *CasperCmd) GetStatus() int {
-	return self.status
-}
-
 func (self *CasperCmd) SetInputArgs(input map[string]string) {
 	if self.Finished() {
 		log.Println("start another casperjs")
@@ -71,7 +65,7 @@ func (self *CasperCmd) SetInputArgs(input map[string]string) {
 	self.input <- input
 }
 
-func (self *CasperCmd) GetMessage() map[string]interface{} {
+func (self *CasperCmd) GetMessage() *Output {
 	return <-self.message
 }
 
@@ -93,12 +87,12 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		return val
 	}
 
-	message := make(map[string]interface{})
-	message["id"] = self.GetArgsValue("id")
-	message["need_args"] = key
-	message[kJobStatus] = kJobOndoing
+	message := &Output{
+		Id:        self.GetArgsValue("id"),
+		NeedParam: key,
+		Status:    NEED_PARAM,
+	}
 	self.message <- message
-
 	return ""
 }
 
@@ -157,6 +151,7 @@ func (self *CasperCmd) DecodePassword(p string) string {
 }
 
 func (self *CasperCmd) run() {
+	log.Println("begin run cmd", self.tmpl)
 	self.isFinish = false
 	self.isKill = false
 
@@ -191,8 +186,8 @@ func (self *CasperCmd) run() {
 	if err != nil {
 		log.Panicln("can not get stdin pipe:", err)
 	}
-
 	bufin := bufio.NewWriter(stdin)
+
 	if err := cmd.Start(); err != nil {
 		log.Panicln("can not start cmd:", err)
 	}
@@ -205,7 +200,6 @@ func (self *CasperCmd) run() {
 	}()
 
 	log.Println("begin read line from capser")
-	start := false
 	for {
 		line, err := bufout.ReadString('\n')
 		line = strings.Trim(line, "\n")
@@ -218,10 +212,10 @@ func (self *CasperCmd) run() {
 		log.Println(line)
 
 		if strings.HasPrefix(line, "CMD INFO STARTED") {
-			start = true
-			message := map[string]interface{}{
-				"public_key": string(publicKeyString(&self.privateKey.PublicKey)),
-				"id":         self.GetArgsValue("id"),
+			message := &Output{
+				Id:     self.GetArgsValue("id"),
+				Status: OUTPUT_PUBLICKEY,
+				Data:   string(publicKeyString(&self.privateKey.PublicKey)),
 			}
 			self.message <- message
 			continue
@@ -243,67 +237,65 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD INFO LOGIN SUCCESS") {
-			var out CasperOutput
-			go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
+			message := &Output{
+				Id:     self.GetArgsValue("id"),
+				Status: LOGIN_SUCCESS,
+			}
+			self.message <- message
 			continue
 		}
 
 		if strings.HasPrefix(line, "CMD INFO RANDCODE") {
-			message := make(map[string]interface{})
-			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
-			message["id"] = self.GetArgsValue("id")
 			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
 			result = strings.Trim(result, " \n")
 			result = UploadImage("./site/" + result)
 			log.Println("success upload captcha image to", result)
-			if PostDataToSlack(result, "captcha") {
-				log.Println("success post captcha to slack")
-			} else {
-				log.Println("fail to post captcha to slack")
+			message := &Output{
+				Id:        self.GetArgsValue("id"),
+				Status:    OUTPUT_VERIFYCODE,
+				Data:      result,
+				NeedParam: PARAM_VERIFY_CODE,
 			}
-			message["result"] = result
-			message[kJobStatus] = kJobOndoing
-			log.Println("send result:", message)
 			self.message <- message
 			continue
 		}
 
 		if strings.HasPrefix(line, "CMD INFO CONTENT") {
-			message := make(map[string]interface{})
-			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
-			message["id"] = self.GetArgsValue("id")
-			result := strings.TrimPrefix(line, "CMD INFO CONTENT")
-			result = strings.Trim(result, " \n")
-			message["result"] = result
-			var out CasperOutput
-			err := json.Unmarshal([]byte(result), &out)
-			if err == nil {
-				message["json"] = out
+			message := &Output{
+				Status: strings.TrimSpace(strings.TrimPrefix(line,
+					"CMD INFO CONTENT")),
+				Id: self.GetArgsValue("id"),
 			}
-			message[kJobStatus] = kJobFinished
-			log.Println("send result:", message)
-			go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
 			self.message <- message
-			self.status = kCommandStatusIdle
-			start = false
 			continue
 		}
 
-		if strings.HasPrefix(line, "CMD EXIT") {
-			message := make(map[string]interface{})
-			message["id"] = self.GetArgsValue("id")
-			message["public_key"] = string(publicKeyString(&self.privateKey.PublicKey))
-			message[kJobStatus] = kJobFailed
-			log.Println("send result:", message)
-			if start {
-				self.message <- message
+		if strings.HasPrefix(line, "CMD INFO FETCHED MAIL") {
+			result := strings.TrimSpace(strings.TrimPrefix(line,
+				"CMD INFO FETCHED MAIL"))
+			var out CasperOutput
+			json.Unmarshal([]byte(result), &out)
+			if self.mailProcessor != nil {
+				go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
 			}
-			self.status = kCommandStatusIdle
+			message := &Output{
+				Status: FINISH_FETCH_DATA,
+				Id:     self.GetArgsValue("id"),
+			}
+			self.message <- message
+			continue
+		}
+
+		if strings.HasPrefix(line, "CMD FAIL") {
+			message := &Output{
+				Status: FAIL,
+				Id:     self.GetArgsValue("id"),
+			}
+			self.message <- message
 			cmd.Process.Wait()
 			cmd.Process.Kill()
 			break
 		}
 	}
-	self.status = kCommandStatusIdle
 	self.isFinish = true
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/xlvector/caspercloud"
 	_ "github.com/xlvector/caspercloud/ci"
-	"golang.org/x/net/websocket"
 	"log"
 	"net"
 	"net/http"
@@ -49,10 +48,6 @@ func main() {
 	http.HandleFunc("/start", HandleStart)
 	http.HandleFunc("/shutdown", HandleShutdown)
 	http.HandleFunc("/health", HandleHealth)
-	http.Handle("/ws/submit", websocket.Handler(service.ServeWebSocket))
-	http.Handle("/images/",
-		http.StripPrefix("/images/",
-			http.FileServer(http.Dir("./images"))))
 	http.Handle("/site/",
 		http.StripPrefix("/site/",
 			http.FileServer(http.Dir("./site"))))

@@ -25,6 +25,7 @@ type Mail struct {
 type CasperOutput struct {
 	Downloads []string `json:"downloads"`
 	Mails     []Mail   `json:"mails"`
+	Status    string   `json:"status"`
 }
 
 func LoadDownloads(fs []string) {
@@ -60,7 +61,8 @@ type MailProcessor struct {
 func NewMailProcessor(path string) *MailProcessor {
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return nil
 	}
 	ret := MailProcessor{}
 	err = json.Unmarshal(text, &ret)

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/BigTong/gocounter"
-	"github.com/pmylund/go-cache"
-	"golang.org/x/net/websocket"
 	"io/ioutil"
 	"log"
 	"net"
@@ -13,7 +11,6 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -22,41 +19,34 @@ const (
 )
 
 type CasperServer struct {
-	clientData *cache.Cache
-	cmdData    *ServerData
-	ct         *gocounter.Counter
-	Host       string
+	cmdData *ServerData
+	ct      *gocounter.Counter
+	Host    string
 }
 
 func NewCasperServer(host string) *CasperServer {
 	return &CasperServer{
-		clientData: cache.New(10*time.Minute, 10*time.Minute),
-		cmdData:    NewServerData(),
-		ct:         gocounter.NewCounter(),
-		Host:       host,
+		cmdData: NewServerData(),
+		ct:      gocounter.NewCounter(),
+		Host:    host,
 	}
 }
 
-func (self *CasperServer) setArgs(cmd Command, params url.Values) string {
+func (self *CasperServer) setArgs(cmd Command, params url.Values) *Output {
 	args := self.getArgs(params)
 	log.Println("setArgs:", args)
 	cmd.SetInputArgs(args)
 
 	if message := cmd.GetMessage(); message != nil {
-		if data, err := json.Marshal(&message); err == nil {
-			return string(data)
-		}
+		return message
 	}
-	return kInternalErrorResut
+	return nil
 }
 
 func (self *CasperServer) getArgs(params url.Values) map[string]string {
 	args := make(map[string]string)
-	for k, _ := range params {
-		if strings.HasPrefix(k, "_") {
-			key := strings.TrimPrefix(k, "_")
-			args[key] = params.Get(k)
-		}
+	for k, v := range params {
+		args[k] = v[0]
 	}
 	return args
 }
@@ -95,29 +85,6 @@ func (self *CasperServer) getProxy() string {
 	return string(b)
 }
 
-func (self *CasperServer) ServeWebSocket(ws *websocket.Conn) {
-	for {
-		var reply string
-
-		if err := websocket.Message.Receive(ws, &reply); err != nil {
-			log.Println("Can't receive")
-			break
-		}
-
-		params, err := url.ParseQuery(reply)
-		if err != nil {
-			break
-		}
-
-		msg := self.Process(params)
-		log.Println("send message:", msg)
-		if err := websocket.Message.Send(ws, msg); err != nil {
-			log.Println("Can't send")
-			break
-		}
-	}
-}
-
 func (self *CasperServer) stringify(m map[string]interface{}) string {
 	output, err := json.Marshal(m)
 	if err != nil {
@@ -126,9 +93,9 @@ func (self *CasperServer) stringify(m map[string]interface{}) string {
 	return string(output)
 }
 
-func (self *CasperServer) Process(params url.Values) string {
+func (self *CasperServer) Process(params url.Values) *Output {
+	log.Println(params.Encode())
 	id := params.Get("id")
-	ret := make(map[string]interface{})
 	if len(id) == 0 {
 		tmpl := params.Get("tmpl")
 		proxyServer := ""
@@ -136,46 +103,28 @@ func (self *CasperServer) Process(params url.Values) string {
 			proxyServer := self.getProxy()
 			log.Println("use proxy:", proxyServer)
 		}
-		c := self.cmdData.GetNewCommand(tmpl, proxyServer)
+		c := self.cmdData.CreateCommand(tmpl, proxyServer)
 		if c == nil {
-			log.Println("server is too busy", tmpl)
-			ret["return_code"] = 1
-			return self.stringify(ret)
+			return &Output{Status: FAIL}
 		}
 
-		id = self.getRandId(nil)
-		self.clientData.Set(id, c.GetId(), kKeepMinutes*time.Minute)
-		log.Println("cmd, ", c.GetId(), self.cmdData.index)
-
-		params.Add("_id", id)
-		params.Add("_start", "yes")
+		params.Add("id", c.GetId())
 		return self.setArgs(c, params)
 	}
 
 	log.Println("get id", id)
-	value, ok := self.clientData.Get(id)
-	if ok {
-		if id, ok := value.(string); ok {
-			c := self.cmdData.GetCommand(id)
-			if c == nil {
-				log.Println("your input is time out", id)
-				ret["return_code"] = 1
-				return self.stringify(ret)
-			}
-
-			if c.Finished() {
-				self.clientData.Delete(id)
-				log.Println("your input is finished", id)
-				ret["return_code"] = 1
-				return self.stringify(ret)
-			}
-			log.Println("get cmd", id)
-			return self.setArgs(c, params)
-		}
-		log.Println("not get cmd")
+	c := self.cmdData.GetCommand(id)
+	if c == nil {
+		return &Output{Status: FAIL}
 	}
-	ret["return_code"] = 1
-	return self.stringify(ret)
+
+	if c.Finished() {
+		self.cmdData.Delete(id)
+		return &Output{Status: FINISH_ALL}
+	}
+
+	log.Println("get cmd", id)
+	return self.setArgs(c, params)
 }
 
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -188,7 +137,8 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	self.ct.Incr("request", 1)
 	params := req.URL.Query()
 	ret := self.Process(params)
-	fmt.Fprint(w, ret)
+	output, _ := json.Marshal(ret)
+	fmt.Fprint(w, string(output))
 	return
 
 }
