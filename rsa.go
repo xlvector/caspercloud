@@ -7,7 +7,7 @@ import (
 	"encoding/pem"
 )
 
-func generateRSAKey() (*rsa.PrivateKey, error) {
+func GenerateRSAKey() (*rsa.PrivateKey, error) {
 	privKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return nil, err
@@ -20,7 +20,7 @@ func generateRSAKey() (*rsa.PrivateKey, error) {
 	return privKey, nil
 }
 
-func publicKeyString(key *rsa.PublicKey) []byte {
+func PublicKeyString(key *rsa.PublicKey) []byte {
 	b, err := x509.MarshalPKIXPublicKey(key)
 	if err != nil {
 		return nil
@@ -32,7 +32,7 @@ func publicKeyString(key *rsa.PublicKey) []byte {
 	return pbs
 }
 
-func privateKeyString(key *rsa.PrivateKey) []byte {
+func PrivateKeyString(key *rsa.PrivateKey) []byte {
 	return pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",

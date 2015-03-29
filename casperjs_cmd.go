@@ -44,7 +44,7 @@ func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
 		mailProcessor: NewMailProcessor("server_list.json"),
 	}
 	var err error
-	ret.privateKey, err = generateRSAKey()
+	ret.privateKey, err = GenerateRSAKey()
 	if err != nil {
 		log.Fatalln("fail to generate rsa key", err)
 	}
@@ -122,8 +122,8 @@ func (self *CasperCmd) getArgsList(args string) []string {
 
 func (self *CasperCmd) getMetaInfo() *ParseRequest {
 	ret := &ParseRequest{}
-	ret.PrivateKey = string(privateKeyString(self.privateKey))
-	ret.PublicKey = string(publicKeyString(&self.privateKey.PublicKey))
+	ret.PrivateKey = string(PrivateKeyString(self.privateKey))
+	ret.PublicKey = string(PublicKeyString(&self.privateKey.PublicKey))
 	ret.Tmpl = self.tmpl
 	ret.UserName = self.userName
 	ret.Secret = self.passWord
@@ -135,13 +135,13 @@ func (self *CasperCmd) Finished() bool {
 	return self.isKill || self.isFinish
 }
 
-func (self *CasperCmd) DecodePassword(p string) string {
+func DecodePassword(p string, privateKey *rsa.PrivateKey) string {
 	bp, err := hex.DecodeString(p)
 	if err != nil {
 		log.Println("decode password hex error:", err)
 		return ""
 	}
-	out, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, self.privateKey,
+	out, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey,
 		bp, []byte(""))
 	if err != nil {
 		log.Println("decode password error:", err)
@@ -216,7 +216,7 @@ func (self *CasperCmd) run() {
 			message := &Output{
 				Id:     self.GetArgsValue("id"),
 				Status: OUTPUT_PUBLICKEY,
-				Data:   string(publicKeyString(&self.privateKey.PublicKey)),
+				Data:   string(PublicKeyString(&self.privateKey.PublicKey)),
 			}
 			self.message <- message
 			continue
@@ -227,7 +227,7 @@ func (self *CasperCmd) run() {
 				key := strings.TrimRight(v, "\n")
 				val := self.GetArgsValue(key)
 				if key == "password" {
-					val = self.DecodePassword(val)
+					val = DecodePassword(val, self.privateKey)
 				}
 				bufin.WriteString(val)
 				delete(self.args, key)
