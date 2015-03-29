@@ -40,10 +40,9 @@ func main() {
 	runtime.GOMAXPROCS(6)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	port := flag.String("port", "8000", "port number")
-	host := flag.String("host", "127.0.0.1", "host")
 	flag.Parse()
 
-	service := caspercloud.NewCasperServer(*host)
+	service := caspercloud.NewCasperServer(&caspercloud.CasperCmdFactory{})
 	http.Handle("/submit", service)
 	http.HandleFunc("/start", HandleStart)
 	http.HandleFunc("/shutdown", HandleShutdown)

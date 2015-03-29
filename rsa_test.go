@@ -5,10 +5,10 @@ import (
 )
 
 func TestRSA(t *testing.T) {
-	pk, err := generateRSAKey()
+	pk, err := GenerateRSAKey()
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log(string(privateKeyString(pk)))
-	t.Log(string(publicKeyString(&pk.PublicKey)))
+	t.Log(string(PrivateKeyString(pk)))
+	t.Log(string(PublicKeyString(&pk.PublicKey)))
 }

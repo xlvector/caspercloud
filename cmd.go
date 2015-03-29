@@ -1,10 +1,18 @@
 package caspercloud
 
+import (
+	"net/url"
+)
+
 type Command interface {
 	GetMessage() *Output
 	SetInputArgs(map[string]string)
 	Finished() bool
 	GetId() string
+}
+
+type CommandFactory interface {
+	CreateCommand(url.Values) Command
 }
 
 const (

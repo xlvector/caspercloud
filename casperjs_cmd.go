@@ -7,7 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -29,10 +31,13 @@ type CasperCmd struct {
 	mailProcessor *MailProcessor
 }
 
-func NewCasperCmd(id, tmpl, proxyServer string) *CasperCmd {
+type CasperCmdFactory struct{}
+
+func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
+	tmpl := params.Get("tmpl")
 	ret := &CasperCmd{
-		proxyServer:   proxyServer,
-		id:            id,
+		proxyServer:   "",
+		id:            fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
 		tmpl:          tmpl,
 		userName:      "",
 		passWord:      "",
