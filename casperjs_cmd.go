@@ -71,7 +71,6 @@ func (self *CasperCmd) GetMessage() *Output {
 
 func (self *CasperCmd) readInputArgs(key string) string {
 	args := <-self.input
-	log.Println("read args:", args)
 	for k, v := range args {
 		if k == "username" {
 			self.userName = v
@@ -84,6 +83,7 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		self.args[k] = v
 	}
 	if val, ok := self.args[key]; ok {
+		log.Println("find param", key, val)
 		return val
 	}
 
@@ -92,6 +92,7 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		NeedParam: key,
 		Status:    NEED_PARAM,
 	}
+	log.Println("need param", key)
 	self.message <- message
 	return ""
 }
@@ -240,6 +241,18 @@ func (self *CasperCmd) run() {
 			message := &Output{
 				Id:     self.GetArgsValue("id"),
 				Status: LOGIN_SUCCESS,
+			}
+			self.message <- message
+			continue
+		}
+
+		if strings.HasPrefix(line, "CMD NEED") {
+			result := strings.TrimPrefix(line, "CMD NEED")
+			result = strings.TrimSpace(result)
+			message := &Output{
+				Id:        self.GetArgsValue("id"),
+				Status:    NEED_PARAM,
+				NeedParam: result,
 			}
 			self.message <- message
 			continue
