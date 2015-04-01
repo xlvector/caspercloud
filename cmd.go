@@ -1,6 +1,7 @@
 package caspercloud
 
 import (
+	"crypto/rsa"
 	"net/url"
 )
 
@@ -8,11 +9,13 @@ type Command interface {
 	GetMessage() *Output
 	SetInputArgs(map[string]string)
 	Finished() bool
+	Successed() bool
 	GetId() string
 }
 
 type CommandFactory interface {
 	CreateCommand(url.Values) Command
+	CreateCommandWithPrivateKey(url.Values, *rsa.PrivateKey) Command
 }
 
 const (

@@ -66,13 +66,16 @@ func (self *CasperServer) Process(params url.Values) *Output {
 		return &Output{Status: FAIL}
 	}
 
+	log.Println("get cmd", id)
+	ret := self.setArgs(c, params)
+
 	if c.Finished() {
+		c.Successed()
 		self.cmdCache.Delete(id)
 		return &Output{Status: FINISH_ALL}
 	}
 
-	log.Println("get cmd", id)
-	return self.setArgs(c, params)
+	return ret
 }
 
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {

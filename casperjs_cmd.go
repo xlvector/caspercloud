@@ -57,6 +57,26 @@ func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 	return ret
 }
 
+func (s *CasperCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk *rsa.PrivateKey) Command {
+	tmpl := params.Get("tmpl")
+	ret := &CasperCmd{
+		proxyServer:   "",
+		id:            fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
+		tmpl:          tmpl,
+		userName:      "",
+		passWord:      "",
+		message:       make(chan *Output, 5),
+		input:         make(chan map[string]string, 5),
+		args:          make(map[string]string),
+		isKill:        false,
+		isFinish:      false,
+		mailProcessor: NewMailProcessor("server_list.json"),
+		privateKey:    pk,
+	}
+	go ret.run()
+	return ret
+}
+
 func (self *CasperCmd) GetId() string {
 	return self.id
 }
@@ -134,6 +154,10 @@ func (self *CasperCmd) getMetaInfo() *ParseRequest {
 	ret.Secret = self.passWord
 	ret.RowKey = self.tmpl + "|" + self.userName
 	return ret
+}
+
+func (self *CasperCmd) Successed() bool {
+	return true
 }
 
 func (self *CasperCmd) Finished() bool {
