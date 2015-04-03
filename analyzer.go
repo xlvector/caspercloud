@@ -117,6 +117,7 @@ func (p *MailProcessor) sendReq(req *ParseRequest) bool {
 }
 
 func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
+	req.ReqType = ParseRequestType_Html
 	for _, fn := range downloads {
 		f, err := os.Open(fn)
 		if err != nil {
@@ -129,12 +130,16 @@ func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
 		}
 
 		if strings.HasSuffix(fn, ".zip") {
+			req.ReqType = ParseRequestType_Eml
 			req.IsZip = true
+		}
+
+		if strings.HasSuffix(fn, ".eml") {
+			req.ReqType = ParseRequestType_Eml
 		}
 
 		req.Data = append(req.Data, string(fd))
 		f.Close()
 	}
-
 	return p.sendReq(req)
 }

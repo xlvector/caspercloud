@@ -28,16 +28,41 @@ var _ grpc.ClientConn
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 
+type ParseRequestType int32
+
+const (
+	ParseRequestType_Eml       ParseRequestType = 0
+	ParseRequestType_Html      ParseRequestType = 1
+	ParseRequestType_Honeycomb ParseRequestType = 2
+)
+
+var ParseRequestType_name = map[int32]string{
+	0: "Eml",
+	1: "Html",
+	2: "Honeycomb",
+}
+var ParseRequestType_value = map[string]int32{
+	"Eml":       0,
+	"Html":      1,
+	"Honeycomb": 2,
+}
+
+func (x ParseRequestType) String() string {
+	return proto.EnumName(ParseRequestType_name, int32(x))
+}
+
 type ParseRequest struct {
-	ClientName string   `protobuf:"bytes,1,opt" json:"ClientName,omitempty"`
-	Tmpl       string   `protobuf:"bytes,2,opt" json:"Tmpl,omitempty"`
-	RowKey     string   `protobuf:"bytes,3,opt" json:"RowKey,omitempty"`
-	UserName   string   `protobuf:"bytes,4,opt" json:"UserName,omitempty"`
-	PublicKey  string   `protobuf:"bytes,5,opt" json:"PublicKey,omitempty"`
-	PrivateKey string   `protobuf:"bytes,6,opt" json:"PrivateKey,omitempty"`
-	Secret     string   `protobuf:"bytes,7,opt" json:"Secret,omitempty"`
-	IsZip      bool     `protobuf:"varint,8,opt" json:"IsZip,omitempty"`
-	Data       []string `protobuf:"bytes,9,rep" json:"Data,omitempty"`
+	ClientName string           `protobuf:"bytes,1,opt" json:"ClientName,omitempty"`
+	Tmpl       string           `protobuf:"bytes,2,opt" json:"Tmpl,omitempty"`
+	RowKey     string           `protobuf:"bytes,3,opt" json:"RowKey,omitempty"`
+	UserName   string           `protobuf:"bytes,4,opt" json:"UserName,omitempty"`
+	PublicKey  string           `protobuf:"bytes,5,opt" json:"PublicKey,omitempty"`
+	PrivateKey string           `protobuf:"bytes,6,opt" json:"PrivateKey,omitempty"`
+	Secret     string           `protobuf:"bytes,7,opt" json:"Secret,omitempty"`
+	IsZip      bool             `protobuf:"varint,8,opt" json:"IsZip,omitempty"`
+	Data       []string         `protobuf:"bytes,9,rep" json:"Data,omitempty"`
+	ParsedData string           `protobuf:"bytes,10,opt" json:"ParsedData,omitempty"`
+	ReqType    ParseRequestType `protobuf:"varint,11,opt,enum=parser.ParseRequestType" json:"ReqType,omitempty"`
 }
 
 func (m *ParseRequest) Reset()         { *m = ParseRequest{} }
@@ -55,6 +80,7 @@ func (m *ParseReply) String() string { return proto.CompactTextString(m) }
 func (*ParseReply) ProtoMessage()    {}
 
 func init() {
+	proto.RegisterEnum("parser.ParseRequestType", ParseRequestType_name, ParseRequestType_value)
 }
 
 // Client API for Parser service
