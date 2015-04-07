@@ -196,11 +196,13 @@ func (self *CasperCmd) run() {
 	var cmd *exec.Cmd
 	if len(self.proxyServer) == 0 {
 		cmd = exec.Command("casperjs", self.tmpl+".js",
+			"--ignore-ssl-errors=true",
 			"--web-security=no",
 			"--cookies-file="+path+"/cookie.txt",
 			"--context="+path)
 	} else {
 		cmd = exec.Command("casperjs", self.tmpl+".js",
+			"--ignore-ssl-errors=true",
 			"--web-security=no",
 			"--cookies-file="+path+"/cookie.txt",
 			"--proxy="+self.proxyServer, "--proxy-type=http",
