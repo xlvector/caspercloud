@@ -26,6 +26,7 @@ const (
 
 	FAIL                  = "fail"
 	NEED_PARAM            = "need_param"
+	NOT_SUPPORT           = "not_support"
 	WRONG_PASSWORD        = "wrong_password"
 	WRONG_VERIFYCODE      = "wrong_verifycode"
 	WRONG_SECOND_PASSWORD = "wrong_second_password"
