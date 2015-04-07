@@ -70,6 +70,10 @@ func NewMailProcessor(path string) *MailProcessor {
 		panic(err)
 	}
 
+	if len(ret.ServerList) == 0 {
+		return nil
+	}
+
 	for _, addr := range ret.ServerList {
 		conn, _ := grpc.Dial(addr)
 		ret.conns = append(ret.conns, conn)
