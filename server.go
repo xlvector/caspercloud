@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/BigTong/gocounter"
-	"log"
+	"github.com/xlvector/dlog"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -30,7 +30,7 @@ func NewCasperServer(cf CommandFactory) *CasperServer {
 
 func (self *CasperServer) setArgs(cmd Command, params url.Values) *Output {
 	args := self.getArgs(params)
-	log.Println("setArgs:", args)
+	dlog.Println("setArgs:", args)
 	cmd.SetInputArgs(args)
 
 	if message := cmd.GetMessage(); message != nil {
@@ -48,7 +48,7 @@ func (self *CasperServer) getArgs(params url.Values) map[string]string {
 }
 
 func (self *CasperServer) Process(params url.Values) *Output {
-	log.Println(params.Encode())
+	dlog.Info("%s", params.Encode())
 	id := params.Get("id")
 	if len(id) == 0 {
 		c := self.cmdFactory.CreateCommand(params)
@@ -60,13 +60,13 @@ func (self *CasperServer) Process(params url.Values) *Output {
 		return self.setArgs(c, params)
 	}
 
-	log.Println("get id", id)
+	dlog.Info("get id:%s", id)
 	c := self.cmdCache.GetCommand(id)
 	if c == nil {
 		return &Output{Status: FAIL}
 	}
 
-	log.Println("get cmd", id)
+	dlog.Info("get cmd:%s", id)
 	ret := self.setArgs(c, params)
 
 	if c.Finished() {
@@ -86,7 +86,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("ERROR: http submit", r)
+			dlog.Println("ERROR: http submit", r)
 			debug.PrintStack()
 		}
 	}()

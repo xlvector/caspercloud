@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/xlvector/dlog"
 	"net/url"
 	"os"
 	"os/exec"
@@ -51,7 +51,7 @@ func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 	var err error
 	ret.privateKey, err = GenerateRSAKey()
 	if err != nil {
-		log.Fatalln("fail to generate rsa key", err)
+		dlog.Fatalln("fail to generate rsa key", err)
 	}
 	go ret.run()
 	return ret
@@ -83,10 +83,9 @@ func (self *CasperCmd) GetId() string {
 
 func (self *CasperCmd) SetInputArgs(input map[string]string) {
 	if self.Finished() {
-		log.Println("start another casperjs")
+		dlog.Warn("start another casperjs")
 		go self.run()
 	}
-	log.Println("insert input:", input)
 	self.input <- input
 }
 
@@ -108,7 +107,6 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		self.args[k] = v
 	}
 	if val, ok := self.args[key]; ok {
-		log.Println("find param", key, val)
 		return val
 	}
 
@@ -117,20 +115,20 @@ func (self *CasperCmd) readInputArgs(key string) string {
 		NeedParam: key,
 		Status:    NEED_PARAM,
 	}
-	log.Println("need param", key)
+	dlog.Warn("need param:%s", key)
 	self.message <- message
 	return ""
 }
 
 func (self *CasperCmd) GetArgsValue(key string) string {
 	if val, ok := self.args[key]; ok {
-		log.Println("successfully get args value", val)
+		dlog.Info("successfully get args value:%s", val)
 		return val
 	}
 	for {
 		val := self.readInputArgs(key)
 		if len(val) != 0 {
-			log.Println("successfully get args value", val)
+			dlog.Info("successfully get args value:%s", val)
 			return val
 		}
 	}
@@ -167,28 +165,27 @@ func (self *CasperCmd) Finished() bool {
 func DecodePassword(p string, privateKey *rsa.PrivateKey) string {
 	bp, err := hex.DecodeString(p)
 	if err != nil {
-		log.Println("decode password hex error:", err)
+		dlog.Warn("decode password hex error:%s", err.Error())
 		return ""
 	}
 	out, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey,
 		bp, []byte(""))
 	if err != nil {
-		log.Println("decode password error:", err)
+		dlog.Warn("decode password error:%s", err.Error())
 		return ""
 	}
-	log.Println("decode password:", string(out))
 	return string(out)
 }
 
 func (self *CasperCmd) run() {
-	log.Println("begin run cmd", self.tmpl)
+	dlog.Info("begin run cmd:%s", self.tmpl)
 	self.isFinish = false
 	self.isKill = false
 
 	path := "./" + self.tmpl + "/" + self.id
 	os.RemoveAll(path)
 	if err := os.MkdirAll(path, 0755); err != nil {
-		log.Fatalln("can not create", path, err)
+		dlog.Fatalln("can not create", path, err)
 	}
 
 	cookieFile, err := os.Create(path + "/cookie.txt")
@@ -210,18 +207,18 @@ func (self *CasperCmd) run() {
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Panicln("can not get stdout pipe:", err)
+		dlog.Panic("can not get stdout pipe:%s", err.Error())
 	}
 	bufout := bufio.NewReader(stdout)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Panicln("can not get stdin pipe:", err)
+		dlog.Panic("can not get stdin pipe:%s", err.Error())
 	}
 	bufin := bufio.NewWriter(stdin)
 
 	if err := cmd.Start(); err != nil {
-		log.Panicln("can not start cmd:", err)
+		dlog.Panic("can not start cmd:%s", err.Error())
 	}
 
 	go func() {
@@ -231,17 +228,18 @@ func (self *CasperCmd) run() {
 		self.isKill = true
 	}()
 
-	log.Println("begin read line from capser")
+	dlog.Info("begin read line from capser")
 	for {
 		line, err := bufout.ReadString('\n')
 		line = strings.Trim(line, "\n")
 		if err != nil {
-			log.Println(err)
+			dlog.Error("read stdin get error:%s", err.Error())
 			cmd.Process.Wait()
 			cmd.Process.Kill()
 			break
 		}
-		log.Println(line)
+
+		dlog.Debug("%s", line)
 
 		if strings.HasPrefix(line, "CMD INFO STARTED") {
 			message := &Output{
@@ -293,7 +291,7 @@ func (self *CasperCmd) run() {
 			result := strings.TrimPrefix(line, "CMD INFO RANDCODE")
 			result = strings.Trim(result, " \n")
 			result = UploadImage("./site/" + result)
-			log.Println("success upload captcha image to", result)
+			dlog.Info("success upload captcha image to:%s", result)
 			message := &Output{
 				Id:        self.GetArgsValue("id"),
 				Status:    OUTPUT_VERIFYCODE,

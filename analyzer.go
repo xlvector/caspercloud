@@ -3,10 +3,10 @@ package caspercloud
 import (
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/xlvector/dlog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -37,17 +37,17 @@ func LoadDownloads(fs []string) {
 func ParseFile(fn string) error {
 	f, err := os.Open(fn)
 	if err != nil {
-		log.Println("fail to load file:", err)
+		dlog.Warn("fail to load file:%s", err.Error())
 		return err
 	}
 	defer f.Close()
 
 	doc, err := goquery.NewDocumentFromReader(f)
 	if err != nil {
-		log.Println("fail to get dom:", err)
+		dlog.Warn("fail to get dom:%s", err.Error())
 		return err
 	}
-	log.Println("file length", len(doc.Text()))
+	dlog.Info("file length:%d", len(doc.Text()))
 	return nil
 }
 
@@ -61,7 +61,7 @@ type MailProcessor struct {
 func NewMailProcessor(path string) *MailProcessor {
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Println(err)
+		dlog.Warn("read %s get error:%s", path, err.Error())
 		return nil
 	}
 	ret := MailProcessor{}
@@ -109,12 +109,12 @@ func (p *MailProcessor) sendReq(req *ParseRequest) bool {
 		index := p.random.Intn(len(p.parseClients))
 		reply, err := p.parseClients[index].ProcessParseRequest(context.Background(), req)
 		if err != nil {
-			log.Println("call get error:", err.Error())
+			dlog.Warn("call get error:%s", err.Error())
 			time.Sleep(1 * time.Second)
 			p.recoverClient(index)
 			continue
 		}
-		log.Println("get server reply:", *reply)
+		dlog.Println("get server reply:", *reply)
 		return true
 	}
 	return false
@@ -125,12 +125,12 @@ func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
 	for _, fn := range downloads {
 		f, err := os.Open(fn)
 		if err != nil {
-			log.Fatal("open file get error:", err.Error())
+			dlog.Fatal("open file get error:%s", err.Error())
 		}
 
 		fd, err := ioutil.ReadAll(f)
 		if err != nil {
-			log.Fatal("read file get error:", err.Error())
+			dlog.Fatal("read file get error:%s", err.Error())
 		}
 
 		if strings.HasSuffix(fn, ".zip") {
