@@ -96,5 +96,4 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	output, _ := json.Marshal(ret)
 	fmt.Fprint(w, string(output))
 	return
-
 }

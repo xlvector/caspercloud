@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,20 +52,21 @@ func ParseFile(fn string) error {
 	return nil
 }
 
-type MailProcessor struct {
+type Analyzer struct {
 	ServerList   []string `json:"server_list"`
 	conns        []*grpc.ClientConn
 	parseClients []ParserClient
 	random       *rand.Rand
+	statusSync   []int32
 }
 
-func NewMailProcessor(path string) *MailProcessor {
+func NewAnalyzer(path string) *Analyzer {
 	text, err := ioutil.ReadFile(path)
 	if err != nil {
 		dlog.Warn("read %s get error:%s", path, err.Error())
 		return nil
 	}
-	ret := MailProcessor{}
+	ret := Analyzer{}
 	err = json.Unmarshal(text, &ret)
 	if err != nil {
 		panic(err)
@@ -78,13 +80,14 @@ func NewMailProcessor(path string) *MailProcessor {
 		conn, _ := grpc.Dial(addr)
 		ret.conns = append(ret.conns, conn)
 		ret.parseClients = append(ret.parseClients, NewParserClient(conn))
+		ret.statusSync = append(ret.statusSync, 0)
 	}
 
 	ret.random = rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &ret
 }
 
-func (p *MailProcessor) Close() {
+func (p *Analyzer) Close() {
 	for _, c := range p.conns {
 		if c != nil {
 			c.Close()
@@ -92,7 +95,7 @@ func (p *MailProcessor) Close() {
 	}
 }
 
-func (p *MailProcessor) recoverClient(index int) {
+func (p *Analyzer) recoverClient(index int) {
 	if index > len(p.ServerList) {
 		return
 	}
@@ -104,14 +107,17 @@ func (p *MailProcessor) recoverClient(index int) {
 	p.parseClients[index] = NewParserClient(p.conns[index])
 }
 
-func (p *MailProcessor) sendReq(req *ParseRequest) bool {
+func (p *Analyzer) sendReq(req *ParseRequest) bool {
 	for i := 0; i < kMaxTryCount; i++ {
 		index := p.random.Intn(len(p.parseClients))
 		reply, err := p.parseClients[index].ProcessParseRequest(context.Background(), req)
 		if err != nil {
 			dlog.Warn("call get error:%s", err.Error())
+			if atomic.CompareAndSwapInt32(&p.statusSync[index], 0, 1) {
+				p.recoverClient(index)
+				atomic.CompareAndSwapInt32(&p.statusSync[index], 1, 0)
+			}
 			time.Sleep(1 * time.Second)
-			p.recoverClient(index)
 			continue
 		}
 		dlog.Println("get server reply:", *reply)
@@ -120,9 +126,17 @@ func (p *MailProcessor) sendReq(req *ParseRequest) bool {
 	return false
 }
 
-func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
-	req.ReqType = ParseRequestType_Html
+func (p *Analyzer) getPathLastPart(path string) string {
+	segs := strings.Split(path, "/")
+	if len(segs) >= 1 {
+		return segs[len(segs)-1]
+	}
+	return path
+}
+
+func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 	for _, fn := range downloads {
+
 		f, err := os.Open(fn)
 		if err != nil {
 			dlog.Fatal("open file get error:%s", err.Error())
@@ -133,16 +147,9 @@ func (p *MailProcessor) Process(req *ParseRequest, downloads []string) bool {
 			dlog.Fatal("read file get error:%s", err.Error())
 		}
 
-		if strings.HasSuffix(fn, ".zip") {
-			req.ReqType = ParseRequestType_Eml
-			req.IsZip = true
-		}
-
-		if strings.HasSuffix(fn, ".eml") {
-			req.ReqType = ParseRequestType_Eml
-		}
-
 		req.Data = append(req.Data, string(fd))
+		req.DataMetaInfo = append(req.DataMetaInfo, p.getPathLastPart(fn))
+
 		f.Close()
 	}
 	return p.sendReq(req)

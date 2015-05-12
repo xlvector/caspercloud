@@ -16,19 +16,25 @@ import (
 	"time"
 )
 
+const (
+	kFetchStarted  = "started"
+	kFetchFinished = "finished"
+	kFetchFailed   = "failed"
+)
+
 type CasperCmd struct {
-	proxyServer   string
-	id            string
-	tmpl          string
-	userName      string
-	passWord      string
-	message       chan *Output
-	input         chan map[string]string
-	isKill        bool
-	isFinish      bool
-	args          map[string]string
-	privateKey    *rsa.PrivateKey
-	mailProcessor *MailProcessor
+	proxyServer string
+	id          string
+	tmpl        string
+	userName    string
+	passWord    string
+	message     chan *Output
+	input       chan map[string]string
+	isKill      bool
+	isFinish    bool
+	args        map[string]string
+	privateKey  *rsa.PrivateKey
+	analyzer    *Analyzer
 }
 
 type CasperCmdFactory struct{}
@@ -36,17 +42,17 @@ type CasperCmdFactory struct{}
 func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 	tmpl := params.Get("tmpl")
 	ret := &CasperCmd{
-		proxyServer:   "",
-		id:            fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
-		tmpl:          tmpl,
-		userName:      "",
-		passWord:      "",
-		message:       make(chan *Output, 5),
-		input:         make(chan map[string]string, 5),
-		args:          make(map[string]string),
-		isKill:        false,
-		isFinish:      false,
-		mailProcessor: NewMailProcessor("server_list.json"),
+		proxyServer: "",
+		id:          fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
+		tmpl:        tmpl,
+		userName:    "",
+		passWord:    "",
+		message:     make(chan *Output, 5),
+		input:       make(chan map[string]string, 5),
+		args:        make(map[string]string),
+		isKill:      false,
+		isFinish:    false,
+		analyzer:    NewAnalyzer("server_list.json"),
 	}
 	var err error
 	ret.privateKey, err = GenerateRSAKey()
@@ -60,18 +66,18 @@ func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 func (s *CasperCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk *rsa.PrivateKey) Command {
 	tmpl := params.Get("tmpl")
 	ret := &CasperCmd{
-		proxyServer:   "",
-		id:            fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
-		tmpl:          tmpl,
-		userName:      "",
-		passWord:      "",
-		message:       make(chan *Output, 5),
-		input:         make(chan map[string]string, 5),
-		args:          make(map[string]string),
-		isKill:        false,
-		isFinish:      false,
-		mailProcessor: NewMailProcessor("server_list.json"),
-		privateKey:    pk,
+		proxyServer: "",
+		id:          fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
+		tmpl:        tmpl,
+		userName:    "",
+		passWord:    "",
+		message:     make(chan *Output, 5),
+		input:       make(chan map[string]string, 5),
+		args:        make(map[string]string),
+		isKill:      false,
+		isFinish:    false,
+		analyzer:    NewAnalyzer("server_list.json"),
+		privateKey:  pk,
 	}
 	go ret.run()
 	return ret
@@ -143,14 +149,25 @@ func (self *CasperCmd) getArgsList(args string) []string {
 	return segs[1:]
 }
 
-func (self *CasperCmd) getMetaInfo() *ParseRequest {
+func (self *CasperCmd) GetParseReq(fetchStatus string) *ParseRequest {
 	ret := &ParseRequest{}
 	ret.PrivateKey = string(PrivateKeyString(self.privateKey))
 	ret.PublicKey = string(PublicKeyString(&self.privateKey.PublicKey))
 	ret.Tmpl = self.tmpl
+	ret.FetchStatus = fetchStatus
 	ret.UserName = self.userName
 	ret.Secret = self.passWord
 	ret.RowKey = self.tmpl + "|" + self.userName
+
+	ret.ReqType = ParseRequestType_Html
+
+	// harder code(Todo refact)
+	switch {
+	case self.tmpl == "taobao":
+		ret.ReqType = ParseRequestType_TaobaoShop
+	case strings.HasPrefix(self.tmpl, "mail.com"):
+		ret.ReqType = ParseRequestType_Eml
+	}
 	return ret
 }
 
@@ -258,6 +275,11 @@ func (self *CasperCmd) run() {
 				if key == "password" {
 					val = DecodePassword(val, self.privateKey)
 				}
+				if key == "username" && self.analyzer != nil {
+					req := self.GetParseReq(kFetchStarted)
+					self.analyzer.sendReq(req)
+					dlog.Info("report status started:%s", req.RowKey)
+				}
 				bufin.WriteString(val)
 				delete(self.args, key)
 				bufin.WriteRune('\n')
@@ -317,8 +339,10 @@ func (self *CasperCmd) run() {
 				"CMD INFO FETCHED MAIL"))
 			var out CasperOutput
 			json.Unmarshal([]byte(result), &out)
-			if self.mailProcessor != nil {
-				go self.mailProcessor.Process(self.getMetaInfo(), out.Downloads)
+			if self.analyzer != nil {
+				req := self.GetParseReq(kFetchFinished)
+				dlog.Info("fetch finished:%s", req.RowKey)
+				go self.analyzer.Process(req, out.Downloads)
 			}
 			message := &Output{
 				Status: FINISH_FETCH_DATA,
@@ -329,6 +353,11 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD FAIL") {
+			if self.analyzer != nil {
+				req := self.GetParseReq(kFetchFailed)
+				dlog.Info("fetch failed:%s", req.RowKey)
+				go self.analyzer.sendReq(req)
+			}
 			message := &Output{
 				Status: FAIL,
 				Id:     self.GetArgsValue("id"),
