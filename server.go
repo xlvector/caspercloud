@@ -77,7 +77,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 
 	if ret.Status == FAIL {
 		c.Successed()
-		return &Output{Status: FINISH_ALL}
+		return &Output{Status: FAIL}
 	}
 
 	return ret
