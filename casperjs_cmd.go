@@ -163,7 +163,7 @@ func (self *CasperCmd) GetParseReq(fetchStatus string) *ParseRequest {
 
 	// harder code(Todo refact)
 	switch {
-	case self.tmpl == "taobao":
+	case self.tmpl == "taobao_shop":
 		ret.ReqType = ParseRequestType_TaobaoShop
 	case strings.HasPrefix(self.tmpl, "mail.com"):
 		ret.ReqType = ParseRequestType_Eml
