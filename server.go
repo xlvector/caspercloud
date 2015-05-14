@@ -72,7 +72,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	if c.Finished() {
 		c.Successed()
 		self.cmdCache.Delete(id)
-		return &Output{Status: FINISH_ALL}
+		return &Output{Status: FINISH_FETCH_DATA}
 	}
 
 	if ret.Status == FAIL {
