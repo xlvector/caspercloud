@@ -256,7 +256,7 @@ func (self *CasperCmd) run() {
 			break
 		}
 
-		dlog.Debug("%s", line)
+		dlog.Info("scripts debug info:%s", line)
 
 		if strings.HasPrefix(line, "CMD INFO STARTED") {
 			message := &Output{
