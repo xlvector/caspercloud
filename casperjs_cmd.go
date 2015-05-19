@@ -162,7 +162,11 @@ func (self *CasperCmd) GetParseReq(fetchStatus string) *ParseRequest {
 	ret.FetchStatus = fetchStatus
 	ret.UserName = self.userName
 	ret.Secret = self.passWord
-	ret.RowKey = self.tmpl + "|" + self.userId + self.userName
+	if len(self.userId) > 0 {
+		ret.RowKey = self.tmpl + "|" + self.userId + "|" + self.userName
+	} else {
+		ret.RowKey = self.tmpl + "|" + self.userName
+	}
 
 	ret.ReqType = ParseRequestType_Html
 
