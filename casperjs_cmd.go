@@ -27,6 +27,7 @@ type CasperCmd struct {
 	id          string
 	tmpl        string
 	userName    string
+	userId      string
 	passWord    string
 	message     chan *Output
 	input       chan map[string]string
@@ -41,11 +42,13 @@ type CasperCmdFactory struct{}
 
 func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 	tmpl := params.Get("tmpl")
+	userid := params.Get("userid")
 	ret := &CasperCmd{
 		proxyServer: "",
 		id:          fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
 		tmpl:        tmpl,
 		userName:    "",
+		userId:      userid,
 		passWord:    "",
 		message:     make(chan *Output, 5),
 		input:       make(chan map[string]string, 5),
@@ -65,11 +68,13 @@ func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 
 func (s *CasperCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk *rsa.PrivateKey) Command {
 	tmpl := params.Get("tmpl")
+	userid := params.Get("userid")
 	ret := &CasperCmd{
 		proxyServer: "",
 		id:          fmt.Sprintf("%s_%d", tmpl, time.Now().UnixNano()),
 		tmpl:        tmpl,
 		userName:    "",
+		userId:      userid,
 		passWord:    "",
 		message:     make(chan *Output, 5),
 		input:       make(chan map[string]string, 5),
@@ -157,7 +162,7 @@ func (self *CasperCmd) GetParseReq(fetchStatus string) *ParseRequest {
 	ret.FetchStatus = fetchStatus
 	ret.UserName = self.userName
 	ret.Secret = self.passWord
-	ret.RowKey = self.tmpl + "|" + self.userName
+	ret.RowKey = self.tmpl + "|" + self.userId + self.userName
 
 	ret.ReqType = ParseRequestType_Html
 
