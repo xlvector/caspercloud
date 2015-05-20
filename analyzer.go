@@ -147,6 +147,10 @@ func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 			dlog.Fatal("read file get error:%s", err.Error())
 		}
 
+		if strings.HasSuffix(fn, ".zip") {
+			req.IsZip = true
+		}
+
 		req.Data = append(req.Data, string(fd))
 		req.DataMetaInfo = append(req.DataMetaInfo, p.getPathLastPart(fn))
 
