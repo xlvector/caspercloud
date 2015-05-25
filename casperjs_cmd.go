@@ -248,7 +248,7 @@ func (self *CasperCmd) run() {
 	}
 
 	go func() {
-		timer := time.NewTimer(5 * time.Minute)
+		timer := time.NewTimer(30 * time.Minute)
 		<-timer.C
 		cmd.Process.Kill()
 		self.isKill = true
