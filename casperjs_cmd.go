@@ -93,6 +93,10 @@ func (self *CasperCmd) GetId() string {
 }
 
 func (self *CasperCmd) SetInputArgs(input map[string]string) {
+	for k, v := range input {
+		dlog.Info("set args:%s->%s", k, v)
+	}
+
 	if self.Finished() {
 		dlog.Warn("start another casperjs")
 		go self.run()
@@ -105,6 +109,7 @@ func (self *CasperCmd) GetMessage() *Output {
 }
 
 func (self *CasperCmd) readInputArgs(key string) string {
+	dlog.Info("read args:%s", key)
 	args := <-self.input
 	for k, v := range args {
 		if k == "username" {
@@ -248,7 +253,7 @@ func (self *CasperCmd) run() {
 	}
 
 	go func() {
-		timer := time.NewTimer(30 * time.Minute)
+		timer := time.NewTimer(20 * time.Minute)
 		<-timer.C
 		cmd.Process.Kill()
 		self.isKill = true
@@ -279,6 +284,7 @@ func (self *CasperCmd) run() {
 
 		if strings.HasPrefix(line, "CMD GET ARGS") {
 			for _, v := range self.getArgsList(line) {
+				dlog.Info("need arg:%s", v)
 				key := strings.TrimRight(v, "\n")
 				val := self.GetArgsValue(key)
 				if key == "password" {
