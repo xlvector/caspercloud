@@ -292,7 +292,7 @@ func (self *CasperCmd) run() {
 				}
 				if key == "username" && self.analyzer != nil {
 					req := self.GetParseReq(kFetchStarted)
-					self.analyzer.sendReq(req)
+					go self.analyzer.sendReq(req)
 					dlog.Info("report status started:%s", req.RowKey)
 				}
 				bufin.WriteString(val)
