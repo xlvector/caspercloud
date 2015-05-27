@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -53,11 +52,8 @@ func ParseFile(fn string) error {
 }
 
 type Analyzer struct {
-	ServerList   []string `json:"server_list"`
-	conns        []*grpc.ClientConn
-	parseClients []ParserClient
-	random       *rand.Rand
-	statusSync   []int32
+	ServerList []string `json:"server_list"`
+	random     *rand.Rand
 }
 
 func NewAnalyzer(path string) *Analyzer {
@@ -75,48 +71,28 @@ func NewAnalyzer(path string) *Analyzer {
 	if len(ret.ServerList) == 0 {
 		return nil
 	}
-
-	for _, addr := range ret.ServerList {
-		conn, _ := grpc.Dial(addr)
-		ret.conns = append(ret.conns, conn)
-		ret.parseClients = append(ret.parseClients, NewParserClient(conn))
-		ret.statusSync = append(ret.statusSync, 0)
-	}
-
 	ret.random = rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &ret
 }
 
-func (p *Analyzer) Close() {
-	for _, c := range p.conns {
-		if c != nil {
-			c.Close()
-		}
-	}
-}
-
-func (p *Analyzer) recoverClient(index int) {
-	if index > len(p.ServerList) {
-		return
-	}
-	if p.conns[index] != nil {
-		p.conns[index].Close()
-	}
-
-	p.conns[index], _ = grpc.Dial(p.ServerList[index])
-	p.parseClients[index] = NewParserClient(p.conns[index])
-}
-
 func (p *Analyzer) sendReq(req *ParseRequest) bool {
 	for i := 0; i < kMaxTryCount; i++ {
-		index := p.random.Intn(len(p.parseClients))
-		reply, err := p.parseClients[index].ProcessParseRequest(context.Background(), req)
+		index := p.random.Intn(len(p.ServerList))
+		conn, err := grpc.Dial(p.ServerList[index])
+		if err != nil {
+			dlog.Warn("dial server get error:%s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		if conn != nil {
+			defer conn.Close()
+		}
+
+		client := NewParserClient(conn)
+
+		reply, err := client.ProcessParseRequest(context.Background(), req)
 		if err != nil {
 			dlog.Warn("call get error:%s", err.Error())
-			if atomic.CompareAndSwapInt32(&p.statusSync[index], 0, 1) {
-				p.recoverClient(index)
-				atomic.CompareAndSwapInt32(&p.statusSync[index], 1, 0)
-			}
 			time.Sleep(1 * time.Second)
 			continue
 		}
