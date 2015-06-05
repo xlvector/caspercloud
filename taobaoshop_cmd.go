@@ -393,15 +393,15 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 	startReq, _ := http.NewRequest("GET", startUrl, nil)
 	startReq = setHeader(startReq)
 	cookies, _ := self.download(startReq)
+	randcodeCookies := self.setCookies(cookies, cookies)
 	taobaoCookies := self.setCookies(cookies, cookies)
 	postHtml := ""
 	index := 0
 	for ; index < 5; index++ {
-
 		// post data to server
 		postParams := url.Values{}
 		// check varycode
-		randcode := self.getRandCode(cookies, userName)
+		randcode := self.getRandCode(randcodeCookies, userName)
 		if len(randcode) != 0 {
 			postParams.Set("TPL_checkcode", randcode)
 		}
@@ -430,7 +430,7 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		}
 		cookies, postHtml = self.download(postReq)
 		taobaoCookies = self.setCookies(cookies, taobaoCookies)
-		dlog.Info("get post body:%s, username:%s", postHtml, userName)
+		//dlog.Info("get post body:%s, username:%s", postHtml, userName)
 		if strings.Contains(postHtml, "验证码错误") {
 			dlog.Warn("randcode error:%s", userName)
 			postHtml = ""
@@ -442,9 +442,8 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		}
 		break
 	}
-
 	if index == 5 {
-		return ret, "验证码输入错误的次数大于5次"
+		return ret, "验证码错误次数大于5次"
 	}
 
 	dlog.Info("get post result:%s", postHtml)
@@ -465,7 +464,7 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 
 	cookies, gotoBody := self.download(gotoReq)
 	taobaoCookies = self.setCookies(cookies, taobaoCookies)
-	dlog.Info("get gotoBody:%s, user:%s", gotoBody, self.userName)
+	//dlog.Info("get gotoBody:%s, user:%s", gotoBody, self.userName)
 
 	firstSplit = strings.Split(gotoBody, "var durexPop = AQPop({")
 	if len(firstSplit) <= 1 {
@@ -558,33 +557,42 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		dlog.Warn("not get enough args:%s", userName)
 		return ret, "二次验证过程失败，请联系管理员"
 	}
+
 	dlog.Info("user:%s get parame value:%s, phone:%s, code:%s", userName, paramValue, phone, code)
-	phoneParams := url.Values{}
-	phoneParams.Set("checkType", "phone")
-	phoneParams.Set("target", code)
-	phoneParams.Set("safePhoneNum", "")
-	phoneParams.Set("checkCode", "")
+	tmpCookies := taobaoCookies
 
-	phoneCodeLink := fmt.Sprintf("https://aq.taobao.com/durex/sendcode?param=%s&checkType=phone", paramValue)
-	dlog.Info("get phone code link:%s", phoneCodeLink)
-	sendVarycodeReq, _ := http.NewRequest("POST", phoneCodeLink, strings.NewReader(phoneParams.Encode()))
-	sendVarycodeReq = setHeader(sendVarycodeReq)
-	sendVarycodeReq.Header.Set("Origin", "https://aq.taobao.com")
-	sendVarycodeReq.Header.Set("Referer", phoneLink)
+	for i := 0; i < 5; i++ {
+		taobaoCookies = tmpCookies
+		phoneParams := url.Values{}
+		phoneParams.Set("checkType", "phone")
+		phoneParams.Set("target", code)
+		phoneParams.Set("safePhoneNum", "")
+		phoneParams.Set("checkCode", "")
 
-	for _, ck := range taobaoCookies {
-		sendVarycodeReq.AddCookie(ck)
-	}
-	cookies, phoneBody := self.download(sendVarycodeReq)
-	taobaoCookies = self.setCookies(cookies, taobaoCookies)
-	dlog.Info("get phonebody:%s, username:%s", phoneBody, userName)
-	sendJson, _ := simplejson.NewJson([]byte(phoneBody))
-	if sendJson == nil {
-		dlog.Warn("get nil json:%s", self.userName)
-		return ret, "手机验证失败"
-	}
-	succeed, _ := sendJson.Get("isSuccess").Bool()
-	if succeed {
+		phoneCodeLink := fmt.Sprintf("https://aq.taobao.com/durex/sendcode?param=%s&checkType=phone", paramValue)
+		dlog.Info("get phone code link:%s", phoneCodeLink)
+		sendVarycodeReq, _ := http.NewRequest("POST", phoneCodeLink, strings.NewReader(phoneParams.Encode()))
+		sendVarycodeReq = setHeader(sendVarycodeReq)
+		sendVarycodeReq.Header.Set("Origin", "https://aq.taobao.com")
+		sendVarycodeReq.Header.Set("Referer", phoneLink)
+
+		for _, ck := range taobaoCookies {
+			sendVarycodeReq.AddCookie(ck)
+		}
+		cookies, phoneBody := self.download(sendVarycodeReq)
+		taobaoCookies = self.setCookies(cookies, taobaoCookies)
+
+		dlog.Info("get phonebody:%s, username:%s", phoneBody, userName)
+
+		sendJson, _ := simplejson.NewJson([]byte(phoneBody))
+		if sendJson == nil {
+			dlog.Warn("get nil json:%s", self.userName)
+			continue
+		}
+		succeed, _ := sendJson.Get("isSuccess").Bool()
+		if !succeed {
+			continue
+		}
 		message := &Output{
 			Id:        self.GetArgsValue("id"),
 			NeedParam: "password2",
@@ -601,12 +609,19 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		varycodeReq = setHeader(varycodeReq)
 		varycodeReq.Header.Set("Origin", "https://aq.taobao.com")
 		varycodeReq.Header.Set("Referer", phoneLink)
+
+		for _, ck := range taobaoCookies {
+			varycodeReq.AddCookie(ck)
+		}
+
 		cookies, body := self.download(varycodeReq)
 		taobaoCookies = self.setCookies(cookies, taobaoCookies)
-		dlog.Info("get check body:%s, username:%s", body, userName)
+		dlog.Info("get phone code check body:%s, username:%s", body, userName)
 		if !strings.Contains(body, "isSuccess\":true,") {
-			return ret, "手机验证失败"
+			dlog.Warn("get wrong phone check body:%s", body)
+			continue
 		}
+
 		finalFistReq, _ := http.NewRequest("GET", jumpLink, nil)
 		finalFistReq = setHeader(finalFistReq)
 		for _, ck := range taobaoCookies {
@@ -616,18 +631,21 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		header, cookies := self.downloadWORedirect(finalFistReq)
 		taobaoCookies = self.setCookies(cookies, taobaoCookies)
 		finalLink := header.Get("Location")
-		dlog.Info("get final second link:%s", finalLink)
-
-		finalSecondReq, _ := http.NewRequest("GET", finalLink, nil)
-		finalSecondReq = setHeader(finalSecondReq)
-		for _, ck := range taobaoCookies {
-			finalSecondReq.AddCookie(ck)
+		if len(finalLink) != 0 {
+			dlog.Info("get final second link:%s", finalLink)
+			finalSecondReq, _ := http.NewRequest("GET", finalLink, nil)
+			finalSecondReq = setHeader(finalSecondReq)
+			for _, ck := range taobaoCookies {
+				finalSecondReq.AddCookie(ck)
+			}
+			finalSecondRespCookies, _ := self.download(finalSecondReq)
+			taobaoCookies = self.setCookies(finalSecondRespCookies, taobaoCookies)
 		}
-		finalSecondRespCookies, _ := self.download(finalSecondReq)
-		taobaoCookies = self.setCookies(finalSecondRespCookies, taobaoCookies)
+
 		return taobaoCookies, ""
+
 	}
-	return ret, "手机验证失败，请重新开始登陆"
+	return ret, "手机验证5次失败，请重新开始登陆"
 }
 
 func (self *TaobaoShopCmd) crawl(link, fileName string,
@@ -1093,7 +1111,7 @@ func (self *TaobaoShopCmd) run() {
 	passWd = DecodePassword(passWd, self.privateKey)
 	delete(self.args, "password")
 	cookies, msg := self.login(userName, passWd)
-
+	dlog.Info("get msg:%s", msg)
 	success := self.checkLoginSuccess(cookies)
 	if !success {
 		if self.analyzer != nil {
@@ -1107,6 +1125,7 @@ func (self *TaobaoShopCmd) run() {
 			Data:   msg,
 		}
 		self.message <- message
+		dlog.Info("get msg:%s", msg)
 		return
 	}
 	// check login
