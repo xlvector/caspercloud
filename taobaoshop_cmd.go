@@ -397,6 +397,7 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 	postHtml := ""
 	index := 0
 	for ; index < 5; index++ {
+
 		// post data to server
 		postParams := url.Values{}
 		// check varycode
@@ -432,6 +433,7 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 		dlog.Info("get post body:%s, username:%s", postHtml, userName)
 		if strings.Contains(postHtml, "验证码错误") {
 			dlog.Warn("randcode error:%s", userName)
+			postHtml = ""
 			continue
 		}
 		if strings.Contains(postHtml, "密码和账户名不匹配") {
