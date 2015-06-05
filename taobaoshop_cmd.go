@@ -464,6 +464,11 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 
 	cookies, gotoBody := self.download(gotoReq)
 	taobaoCookies = self.setCookies(cookies, taobaoCookies)
+
+	if strings.Contains(gotoLink, "http://i.taobao.com/my_taobao.htm") {
+		return taobaoCookies, ""
+	}
+
 	//dlog.Info("get gotoBody:%s, user:%s", gotoBody, self.userName)
 
 	firstSplit = strings.Split(gotoBody, "var durexPop = AQPop({")
