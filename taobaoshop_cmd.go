@@ -139,7 +139,7 @@ func (s *TaobaoShopCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk
 		isFinish:   false,
 		analyzer:   NewAnalyzer("server_list.json"),
 		converter:  NewUtf8Converter(),
-		client:     newHttpClient(40),
+		client:     newHttpClient(20),
 		privateKey: pk,
 	}
 	go ret.run()
@@ -587,6 +587,7 @@ func (self *TaobaoShopCmd) login(userName, passWd string) ([]*http.Cookie, strin
 			Id:        self.GetArgsValue("id"),
 			NeedParam: "password2",
 			Status:    NEED_PARAM,
+			Data:      phone,
 		}
 		self.message <- message
 
@@ -1038,6 +1039,20 @@ func (self *TaobaoShopCmd) downloadZhifubao(cookies []*http.Cookie) []string {
 	return ret
 }
 
+func (self *TaobaoShopCmd) checkLoginSuccess(cookies []*http.Cookie) bool {
+	checkReq, _ := http.NewRequest("GET", "http://beta.sycm.taobao.com/rank/getShopRank.json", nil)
+	checkReq = setHeader(checkReq)
+	for _, ck := range cookies {
+		checkReq.AddCookie(ck)
+	}
+	_, checkBody := self.download(checkReq)
+	dlog.Info("get check login success body:%s", checkBody)
+	if strings.Contains(checkBody, "login system") {
+		return false
+	}
+	return true
+}
+
 func (self *TaobaoShopCmd) run() {
 	dlog.Info("begin run cmd:%s", self.tmpl)
 	self.isFinish = false
@@ -1076,7 +1091,9 @@ func (self *TaobaoShopCmd) run() {
 	passWd = DecodePassword(passWd, self.privateKey)
 	delete(self.args, "password")
 	cookies, msg := self.login(userName, passWd)
-	if len(cookies) == 0 {
+
+	success := self.checkLoginSuccess(cookies)
+	if !success {
 		if self.analyzer != nil {
 			req := self.GetParseReq(kFetchFailed)
 			dlog.Info("fetch failed:%s", req.RowKey)
@@ -1109,6 +1126,7 @@ func (self *TaobaoShopCmd) run() {
 	ret = append(ret, zhifubao...)
 	ret = append(ret, aliloan...)
 
+	dlog.Info("finish all:%s, fetch doc num:%d", self.userName, len(ret))
 	if self.analyzer != nil {
 		req := self.GetParseReq(kFetchFinished)
 		dlog.Info("fetch finished:%s", req.RowKey)
