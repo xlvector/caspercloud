@@ -292,7 +292,7 @@ func (self *CasperCmd) run() {
 				}
 				if key == "username" && self.analyzer != nil {
 					req := self.GetParseReq(kFetchStarted)
-					go self.analyzer.sendReq(req)
+					go self.analyzer.SendReq(req)
 					dlog.Info("report status started:%s", req.RowKey)
 				}
 				bufin.WriteString(val)
@@ -371,7 +371,7 @@ func (self *CasperCmd) run() {
 			if self.analyzer != nil {
 				req := self.GetParseReq(kFetchFailed)
 				dlog.Info("fetch failed:%s", req.RowKey)
-				go self.analyzer.sendReq(req)
+				go self.analyzer.SendReq(req)
 			}
 			message := &Output{
 				Status: FAIL,

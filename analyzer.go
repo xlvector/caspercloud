@@ -75,7 +75,7 @@ func NewAnalyzer(path string) *Analyzer {
 	return &ret
 }
 
-func (p *Analyzer) sendReq(req *ParseRequest) bool {
+func (p *Analyzer) SendReq(req *ParseRequest) bool {
 	for i := 0; i < kMaxTryCount; i++ {
 		index := p.random.Intn(len(p.ServerList))
 		conn, err := grpc.Dial(p.ServerList[index])
@@ -132,5 +132,5 @@ func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 
 		f.Close()
 	}
-	return p.sendReq(req)
+	return p.SendReq(req)
 }
