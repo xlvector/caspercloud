@@ -1,14 +1,14 @@
 package caspercloud
 
 import (
-	"code.google.com/p/mahonia"
 	"crypto/rsa"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/saintfish/chardet"
 	"github.com/xlvector/dlog"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,61 +17,26 @@ import (
 	"time"
 )
 
-type Utf8Converter struct {
-	detector *chardet.Detector
-	gbk      mahonia.Decoder
-	big5     mahonia.Decoder
+type ProxyList struct {
+	Proxys []string `json:"proxys"`
 }
 
-func NewUtf8Converter() *Utf8Converter {
-	ret := Utf8Converter{}
-	ret.detector = chardet.NewHtmlDetector()
-	ret.gbk = mahonia.NewDecoder("gb18030")
-	ret.big5 = mahonia.NewDecoder("big5")
-	return &ret
-}
-
-func (self *Utf8Converter) DetectCharset(html []byte) string {
-	rets, err := self.detector.DetectAll(html)
+func NewProxyList(path string) *ProxyList {
+	text, err := ioutil.ReadFile(path)
 	if err != nil {
-		return ""
+		dlog.Warn("read %s get error:%s", path, err.Error())
+		return nil
 	}
-	maxret := ""
-	w := 0
-	for _, ret := range rets {
-		cs := strings.ToLower(ret.Charset)
-		if strings.HasPrefix(cs, "gb") || strings.HasPrefix(cs, "utf") {
-			if w < ret.Confidence {
-				w = ret.Confidence
-				maxret = cs
-			}
-		} else {
-			continue
-		}
+	ret := &ProxyList{}
+	err = json.Unmarshal(text, ret)
+	if err != nil {
+		panic(err)
 	}
-	return maxret
-}
 
-func (self *Utf8Converter) ToUTF8(html []byte) []byte {
-	charset := self.DetectCharset(html)
-
-	if !strings.Contains(charset, "gb") && !strings.Contains(charset, "big") {
-		charset = "utf-8"
+	if len(ret.Proxys) == 0 {
+		return nil
 	}
-	if charset == "utf-8" || charset == "utf8" {
-		return html
-	} else if charset == "gb2312" || charset == "gb-2312" || charset == "gbk" || charset == "gb18030" || charset == "gb-18030" {
-		ret, ok := self.gbk.ConvertStringOK(string(html))
-		if ok {
-			return []byte(ret)
-		}
-	} else if charset == "big5" {
-		ret, ok := self.big5.ConvertStringOK(string(html))
-		if ok {
-			return []byte(ret)
-		}
-	}
-	return nil
+	return ret
 }
 
 type TaobaoShopCmd struct {
@@ -92,6 +57,7 @@ type TaobaoShopCmd struct {
 	analyzer      *Analyzer
 	converter     *Utf8Converter
 	client        *http.Client
+	proxyList     *ProxyList
 }
 
 type TaobaoShopCmdFactory struct{}
@@ -112,13 +78,15 @@ func (s *TaobaoShopCmdFactory) CreateCommand(params url.Values) Command {
 		isFinish:  false,
 		analyzer:  NewAnalyzer("server_list.json"),
 		converter: NewUtf8Converter(),
-		client:    newHttpClient(40),
+		proxyList: NewProxyList("proxy_list.json"),
 	}
 	var err error
 	ret.privateKey, err = GenerateRSAKey()
 	if err != nil {
 		dlog.Fatalln("fail to generate rsa key", err)
 	}
+
+	ret.client = newHttpClient(40, ret.proxyList)
 	go ret.run()
 	return ret
 }
@@ -139,9 +107,10 @@ func (s *TaobaoShopCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk
 		isFinish:   false,
 		analyzer:   NewAnalyzer("server_list.json"),
 		converter:  NewUtf8Converter(),
-		client:     newHttpClient(20),
 		privateKey: pk,
+		proxyList:  NewProxyList("proxy_list.json"),
 	}
+	ret.client = newHttpClient(40, ret.proxyList)
 	go ret.run()
 	return ret
 }
@@ -244,8 +213,8 @@ func (self *TaobaoShopCmd) Finished() bool {
 	return self.isKill || self.isFinish
 }
 
-func newHttpClient(timeOutSeconds int) *http.Client {
-	client := &http.Client{
+func newHttpClient(timeOutSeconds int, proxyList *ProxyList) *http.Client {
+	ret := &http.Client{
 		Transport: &http.Transport{
 			Dial: func(netw, addr string) (net.Conn, error) {
 				timeout := time.Duration(timeOutSeconds) * time.Second
@@ -262,7 +231,39 @@ func newHttpClient(timeOutSeconds int) *http.Client {
 			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 		},
 	}
-	return client
+	if proxyList == nil || len(proxyList.Proxys) == 0 {
+		return ret
+	}
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	index := random.Intn(len(proxyList.Proxys) * 2)
+	if index >= len(proxyList.Proxys) {
+		return ret
+	}
+	proxy := proxyList.Proxys[index]
+	proxyUrl, err := url.Parse(proxy)
+	if err != nil {
+		dlog.Error("error, got not valid proxy:%s, error:%s", proxy, err.Error())
+		return ret
+	}
+
+	return &http.Client{
+		Transport: &http.Transport{
+			Dial: func(netw, addr string) (net.Conn, error) {
+				timeout := time.Duration(timeOutSeconds) * time.Second
+				deadline := time.Now().Add(timeout)
+				c, err := net.DialTimeout(netw, addr, timeout)
+				if err != nil {
+					return nil, err
+				}
+				c.SetDeadline(deadline)
+				return c, nil
+			},
+			DisableKeepAlives:     true,
+			ResponseHeaderTimeout: time.Duration(timeOutSeconds) * time.Second,
+			TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+			Proxy:                 http.ProxyURL(proxyUrl),
+		},
+	}
 }
 
 func (self *TaobaoShopCmd) download(req *http.Request) ([]*http.Cookie, string) {
@@ -291,13 +292,15 @@ func (self *TaobaoShopCmd) download(req *http.Request) ([]*http.Cookie, string) 
 }
 
 func (self *TaobaoShopCmd) downloadWORedirect(req *http.Request) (http.Header, []*http.Cookie) {
-
-	transport := http.Transport{}
-	resp, err := transport.RoundTrip(req)
+	resp, err := self.client.Transport.RoundTrip(req)
 	if err != nil {
 		dlog.Warn("round trip error:%s", err.Error())
 		return nil, nil
 	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
 	return resp.Header, resp.Cookies()
 }
 
