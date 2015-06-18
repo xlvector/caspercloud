@@ -53,7 +53,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	if len(id) == 0 {
 		c := self.cmdFactory.CreateCommand(params)
 		if c == nil {
-			return &Output{Status: FAIL}
+			return &Output{Status: FAIL, Data: "no create command"}
 		}
 		self.cmdCache.SetCommand(c)
 		params.Set("id", c.GetId())
@@ -63,7 +63,8 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	dlog.Info("get id:%s", id)
 	c := self.cmdCache.GetCommand(id)
 	if c == nil {
-		return &Output{Status: FAIL}
+		dlog.Warn("get nill command id:%s", id)
+		return &Output{Status: FAIL, Data: "not get command"}
 	}
 
 	dlog.Info("get cmd:%s", id)
@@ -77,7 +78,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 
 	if ret.Status == FAIL {
 		c.Successed()
-		return &Output{Status: FAIL}
+		return &Output{Status: FAIL, Data: ret.Data}
 	}
 
 	return ret
