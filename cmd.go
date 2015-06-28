@@ -23,6 +23,7 @@ const (
 	PARAM_PASSWORD    = "password"
 	PARAM_PASSWORD2   = "password2"
 	PARAM_VERIFY_CODE = "randcode"
+	PARAM_PHONE_NUM   = "phone"
 
 	FAIL                  = "fail"
 	NEED_PARAM            = "need_param"
@@ -36,6 +37,7 @@ const (
 	FINISH_ALL            = "finish_all"
 	OUTPUT_PUBLICKEY      = "output_publickey"
 	OUTPUT_VERIFYCODE     = "output_verifycode"
+	TAOBAO_FAIL           = "taobao_crawl_failed"
 )
 
 type Output struct {
