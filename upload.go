@@ -15,7 +15,7 @@ func UploadImage(path string) string {
 	params := map[string]string{
 		"file": path,
 	}
-	b, err := upload("https://static.qiangxianhua.com/upload",
+	b, err := upload("http://static.yixin.com/upload",
 		params, "file", path)
 	if err != nil {
 		return ""
