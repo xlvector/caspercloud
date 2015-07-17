@@ -63,7 +63,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	dlog.Info("get id:%s", id)
 	c := self.cmdCache.GetCommand(id)
 	if c == nil {
-		dlog.Warn("get nill command id:%s", id)
+		dlog.Warn("get nil command id:%s", id)
 		return &Output{Status: FAIL, Data: "not get command"}
 	}
 

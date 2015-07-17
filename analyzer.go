@@ -115,12 +115,14 @@ func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 
 		f, err := os.Open(fn)
 		if err != nil {
-			dlog.Fatal("open file get error:%s", err.Error())
+			dlog.Warn("open file get error:%s", err.Error())
+			return false
 		}
 
 		fd, err := ioutil.ReadAll(f)
 		if err != nil {
-			dlog.Fatal("read file get error:%s", err.Error())
+			dlog.Warn("read file get error:%s", err.Error())
+			return false
 		}
 
 		if strings.HasSuffix(fn, ".zip") {
