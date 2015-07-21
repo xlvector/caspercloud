@@ -31,10 +31,11 @@ var _ = proto.Marshal
 type ParseRequestType int32
 
 const (
-	ParseRequestType_Eml        ParseRequestType = 0
-	ParseRequestType_Html       ParseRequestType = 1
-	ParseRequestType_Honeycomb  ParseRequestType = 2
-	ParseRequestType_TaobaoShop ParseRequestType = 3
+	ParseRequestType_Eml              ParseRequestType = 0
+	ParseRequestType_Html             ParseRequestType = 1
+	ParseRequestType_Honeycomb        ParseRequestType = 2
+	ParseRequestType_TaobaoShop       ParseRequestType = 3
+	ParseRequestType_Honeycomb_Taobao ParseRequestType = 4
 )
 
 var ParseRequestType_name = map[int32]string{
