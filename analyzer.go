@@ -124,6 +124,7 @@ func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 			dlog.Warn("read file get error:%s", err.Error())
 			continue
 		}
+		fd = strings.Trim(fd, " \n\r\t")
 
 		if strings.HasSuffix(fn, ".zip") {
 			req.IsZip = true
