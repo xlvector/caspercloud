@@ -368,6 +368,7 @@ func (self *CasperCmd) run() {
 		}
 
 		if strings.HasPrefix(line, "CMD FAIL") {
+			data := strings.TrimSpace(strings.TrimPrefix(line, "CMD FAIL"))
 			if self.analyzer != nil {
 				req := self.GetParseReq(kFetchFailed)
 				dlog.Info("fetch failed:%s", req.RowKey)
@@ -376,6 +377,7 @@ func (self *CasperCmd) run() {
 			message := &Output{
 				Status: FAIL,
 				Id:     self.GetArgsValue("id"),
+				Data:   data,
 			}
 			self.message <- message
 			cmd.Process.Wait()
