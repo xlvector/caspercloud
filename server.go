@@ -70,15 +70,9 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	dlog.Info("get cmd:%s", id)
 	ret := self.setArgs(c, params)
 
-	if c.Finished() {
+	if c.Finished() || ret.Status == FAIL || ret.Status == FINISH_FETCH_DATA || ret.Status == FINISH_ALL {
 		c.Successed()
 		self.cmdCache.Delete(id)
-		return &Output{Status: FINISH_FETCH_DATA}
-	}
-
-	if ret.Status == FAIL {
-		c.Successed()
-		return &Output{Status: FAIL, Data: ret.Data}
 	}
 
 	return ret
