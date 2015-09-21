@@ -37,6 +37,7 @@ const (
 	ParseRequestType_TaobaoShop       ParseRequestType = 3
 	ParseRequestType_Honeycomb_Taobao ParseRequestType = 4
 	ParseRequestType_Honeycomb_Ccrc   ParseRequestType = 5
+	ParseRequestType_Honeycomb_Phone  ParseRequestType = 6
 )
 
 var ParseRequestType_name = map[int32]string{
