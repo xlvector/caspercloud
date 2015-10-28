@@ -86,7 +86,8 @@ func (self *CasperServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}()
 	self.ct.Incr("request", 1)
-	params := req.URL.Query()
+	req.ParseForm()
+	params := req.Form
 	ret := self.Process(params)
 	output, _ := json.Marshal(ret)
 	fmt.Fprint(w, string(output))
