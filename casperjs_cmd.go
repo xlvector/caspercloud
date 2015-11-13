@@ -220,6 +220,11 @@ func DecodePassword(p string, privateKey *rsa.PrivateKey) string {
 }
 
 func (self *CasperCmd) run() {
+	defer func() {
+		if err := recover(); err != nil {
+			dlog.Warn("run error:%v",err)
+ 		}
+	}()
 	dlog.Info("begin run cmd:%s", self.tmpl)
 	self.isFinish = false
 	self.isKill = false
