@@ -11,6 +11,7 @@ type Command interface {
 	Finished() bool
 	Successed() bool
 	GetId() string
+	Close()	bool
 }
 
 type CommandFactory interface {

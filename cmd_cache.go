@@ -2,6 +2,7 @@ package caspercloud
 
 import (
 	"sync"
+	"time"
 )
 
 type CommandCache struct {
@@ -20,12 +21,20 @@ func (self *CommandCache) SetCommand(c Command) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.data[c.GetId()] = c
+	go func() {
+		timer := time.NewTimer(20 * time.Minute)
+		<-timer.C
+		c.Close()
+		self.Delete(c.GetId())	
+	}()
 }
 
 func (self *CommandCache) Delete(id string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-	delete(self.data, id)
+	if _,ok:=self.data[id];ok{
+		delete(self.data, id)
+	}
 }
 
 func (self *CommandCache) GetCommand(id string) Command {

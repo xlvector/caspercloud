@@ -108,6 +108,17 @@ func (self *CasperCmd) GetMessage() *Output {
 	return <-self.message
 }
 
+func (self *CasperCmd) Close() bool {
+	defer func(){
+		if err := recover(); err != nil {
+			dlog.Warn("Close Error:%v",err)
+ 		}
+	}()
+	close(self.message)
+	close(self.input)
+	return true
+}
+
 func (self *CasperCmd) readInputArgs(key string) string {
 	dlog.Info("read args:%s", key)
 	args := <-self.input
