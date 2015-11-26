@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BigTong/gocounter"
 	"github.com/xlvector/dlog"
+	"git.bdp.cc/termite/hybrid/ipmanager"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -12,20 +13,25 @@ import (
 
 const (
 	kInternalErrorResut = "server get internal result"
+	IpMangerKey = "IP_MANAGER_KEY"
 )
 
 type CasperServer struct {
 	cmdCache   *CommandCache
 	ct         *gocounter.Counter
 	cmdFactory CommandFactory
+	globalContext map[string]interface{}	
 }
 
 func NewCasperServer(cf CommandFactory) *CasperServer {
-	return &CasperServer{
+	ret := &CasperServer{
 		cmdCache:   NewCommandCache(),
 		ct:         gocounter.NewCounter(),
 		cmdFactory: cf,
+		globalContext: make(map[string]interface{},0),
 	}
+	ret.globalContext[IpMangerKey] = ipmanager.NewTmplIPManagerByConfig("proxy.json")
+	return ret
 }
 
 func (self *CasperServer) setArgs(cmd Command, params url.Values) *Output {
@@ -51,7 +57,7 @@ func (self *CasperServer) Process(params url.Values) *Output {
 	dlog.Info("%s", params.Encode())
 	id := params.Get("id")
 	if len(id) == 0 {
-		c := self.cmdFactory.CreateCommand(params)
+		c := self.cmdFactory.CreateCommand(params , self.globalContext)
 		if c == nil {
 			return &Output{Status: FAIL, Data: "no create command"}
 		}
