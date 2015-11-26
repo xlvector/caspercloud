@@ -15,8 +15,8 @@ type Command interface {
 }
 
 type CommandFactory interface {
-	CreateCommand(url.Values) Command
-	CreateCommandWithPrivateKey(url.Values, *rsa.PrivateKey) Command
+	CreateCommand(url.Values,map[string]interface{}) Command
+	CreateCommandWithPrivateKey(url.Values,map[string]interface{}, *rsa.PrivateKey) Command
 }
 
 const (

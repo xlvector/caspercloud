@@ -40,7 +40,7 @@ type CasperCmd struct {
 
 type CasperCmdFactory struct{}
 
-func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
+func (s *CasperCmdFactory) CreateCommand(params url.Values,globalContext map[string]interface{}) Command {
 	tmpl := params.Get("tmpl")
 	userid := params.Get("userid")
 	ret := &CasperCmd{
@@ -66,7 +66,7 @@ func (s *CasperCmdFactory) CreateCommand(params url.Values) Command {
 	return ret
 }
 
-func (s *CasperCmdFactory) CreateCommandWithPrivateKey(params url.Values, pk *rsa.PrivateKey) Command {
+func (s *CasperCmdFactory) CreateCommandWithPrivateKey(params url.Values,globalContext map[string]interface{}, pk *rsa.PrivateKey) Command {
 	tmpl := params.Get("tmpl")
 	userid := params.Get("userid")
 	ret := &CasperCmd{
