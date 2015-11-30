@@ -13,7 +13,6 @@ import (
 
 const (
 	kInternalErrorResut = "server get internal result"
-	IpMangerKey = "IP_MANAGER_KEY"
 )
 
 type CasperServer struct {
@@ -30,8 +29,12 @@ func NewCasperServer(cf CommandFactory) *CasperServer {
 		cmdFactory: cf,
 		globalContext: make(map[string]interface{},0),
 	}
-	ret.globalContext[IpMangerKey] = ipmanager.NewTmplIPManagerByConfig("proxy.json")
+	
 	return ret
+}
+
+func (self *CasperServer) GetContext() map[string]interface{} {
+	return self.globalContext
 }
 
 func (self *CasperServer) setArgs(cmd Command, params url.Values) *Output {
