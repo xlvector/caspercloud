@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/BigTong/gocounter"
 	"github.com/xlvector/dlog"
-	"git.bdp.cc/termite/hybrid/ipmanager"
 	"net/http"
 	"net/url"
 	"runtime/debug"
