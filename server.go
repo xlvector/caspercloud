@@ -67,8 +67,6 @@ func (self *CasperServer) Process(params url.Values) *Output {
 		params.Set("id", c.GetId())
 		return self.setArgs(c, params)
 	}
-
-	dlog.Info("get id:%s", id)
 	c := self.cmdCache.GetCommand(id)
 	if c == nil {
 		dlog.Warn("get nil command id:%s", id)

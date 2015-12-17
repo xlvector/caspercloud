@@ -1,6 +1,7 @@
 package caspercloud
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/xlvector/dlog"
@@ -10,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"bytes"
 	"time"
 )
 
@@ -135,6 +137,40 @@ func (p *Analyzer) Process(req *ParseRequest, downloads []string) bool {
 		req.DataMetaInfo = append(req.DataMetaInfo, p.getPathLastPart(fn))
 
 		f.Close()
+	}
+	return p.SendReq(req)
+}
+
+
+func (p *Analyzer) ProcessZip(req *ParseRequest, body []byte) bool {
+	zipReader, err := zip.NewReader(bytes.NewReader(body),int64(len(body)))
+	if err != nil {
+		dlog.Warn("unzip file get error: %v", err)
+		return false
+	}
+	for _, f := range zipReader.File {
+		rc, err := f.Open()
+		fn := f.Name
+		if err != nil {
+			dlog.Warn("open file get error: %v", err)
+			continue
+		}
+		defer rc.Close()
+
+		data, err := ioutil.ReadAll(rc)
+		if err != nil {
+			dlog.Warn("read zip file get error: %v", err)
+			continue
+		}
+
+		fdstr := string(data)
+		fdstr = strings.Trim(fdstr, " \n\r\t")
+
+		if strings.HasSuffix(fn, ".zip") {
+			req.IsZip = true
+		}
+		req.Data = append(req.Data, fdstr)
+		req.DataMetaInfo = append(req.DataMetaInfo, p.getPathLastPart(fn))
 	}
 	return p.SendReq(req)
 }
